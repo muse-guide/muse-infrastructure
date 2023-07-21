@@ -1,0 +1,44 @@
+{
+  "id": {
+    "S": "1001"
+  },
+  "number": {
+    "N": "2"
+  },
+  "exhibitionId": {
+    "S": "1000"
+  },
+  "lang": {
+    "S": "pl"
+  },
+  "langOptions": {
+    "SS": [
+      "gb",
+      "pl"
+    ]
+  },
+  "title": {
+    "S": "Wenus z Milo"
+  },
+  "subtitle": {
+    "S": "Autor nieznany,<br>ok. 1000 p.n.e., znalezione na wyspie Milo"
+  },
+  "description": {
+    "S": "<p style=\"margin-top: 0\">Mona Lisa (<i>wł. Gioconda</i>)– obraz olejny namalowany na topolowej desce przez Leonarda da Vinci, artystę włoskiego renesansu. Jego nazwa pochodzi od słowa mona, które w dialekcie toskańskim jest skrótem od tytułu ma donna („moja pani”) oraz imienia domniemanego tematu portretu zaś we wł. i hiszp. znany jest jako La Gioconda, a we fr. La Joconde od nazwy rodu kupca zamawiającego to dzieło.</p><p><img style=\"width: 100%\" src=\"/asset/exhibits/1000/image/article1.png\" alt=\"not found\" /></p><p style=\"text-align: center; display: flex\"><i>Rys. 1. Tajemnicze spojrzenie Mona Lisy przeszło do popkultury</i></p><p>    Obraz powstał w latach 1503–1507; obecnie znajduje się w paryskim Luwrze, pozostając własnością rządu Francji. Dzieło trafiło na stałą ekspozycję do Luwru w 1797 roku. Jest to jeden z najsłynniejszych i najbardziej cenionych obrazów z czasów renesansu. Podczas przenosin na tymczasową wystawę w Waszyngtonie w 1962 roku obraz został ubezpieczony na kwotę 100 milionów dolarów, co świadczy o jego wysokiej wartości na rynku sztuki.</p>"
+  },
+  "audioUrl": {
+    "S": "/asset/exhibits/1001/audio/pl.mp3"
+  },
+  "imageUrl": {
+    "S": "/asset/exhibits/1001/image/square.jpg"
+  },
+  "nextExhibitId": {
+    "S": "1002"
+  },
+  "prevExhibitId": {
+    "S": "1000"
+  },
+  "artistId": {
+    "S": "1000"
+  }
+}

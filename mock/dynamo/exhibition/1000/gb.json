@@ -1,0 +1,95 @@
+{
+    "id": {
+        "S": "1000"
+    },
+    "institutionId": {
+        "S": "1000"
+    },
+    "lang": {
+        "S": "gb"
+    },
+    "langOptions": {
+        "SS": [
+            "gb",
+            "pl"
+        ]
+    },
+    "title": {
+        "S": "Gallery of Old Masters"
+    },
+    "subtitle": {
+        "S": "European and Old Polish Decorative Arts, Painting and Sculpture. 15th–18th Century"
+    },
+    "description": {
+        "S": "<p style=\"margin-top: 0\">The former galleries: the Gallery of Decorative Arts and the Gallery of European and Polish Old Masters of the National Museum in Warsaw have been merged to form the new Gallery of Old Masters. Bringing together diverse art forms, we intend to move away from the traditional discourse of art history where the “high” pictorial art — painting, sculpture, drawing and graphic arts  were separated from decorative arts understood exclusively in utilitarian terms. Yet such division did not exist in the past. Generally speaking, all art forms were perceived as equal. If any of them was considered superior, it was not painting or sculpture but goldsmithery and tapestry weaving. The very notion of art – Latin ars (followed by Italian arte and French art), Greek techne, German and Dutch Kunst – originally signified artistry, skillful execution, craft. What was most highly esteemed in painting and sculpture was exactly artisanal expertise, virtuosity of workmanship.</p><p><img style=\"width: 100%\" src=\"/asset/exhibitions/1000/image/article1.jpg\" alt=\"not found\" /></p><p>The representational character of painting and sculpture — subjected to the principle of the imitation of reality (mimesis) — was not a criterion of division either. As our exhibition demonstrates, the majority of examples of old artisanal handicraft, while undeniably decorative, also featured figurative depictions, which are the quintessence of painting and sculpture. Decorative arts shared with painting and sculpture their purpose and functions, but also spaces where they were collected and exhibited. These “social spaces” have provided the key to the division of the gallery: 1. palace, villa, court; 2. church, chapel and domestic altar; 3. the city. In other words: 1. court culture; 2. religious culture; 3. city culture.</p >"
+    },
+    "imageUrls": {
+        "SS": [
+          "/asset/exhibitions/1000/image/article1.jpg",
+          "/asset/exhibitions/1000/image/img1.jpg",
+          "/asset/exhibitions/1000/image/img2.jpg",
+          "/asset/exhibitions/1000/image/img3.jpg"
+        ]
+    },
+    "exhibits": {
+        "L": [
+            {
+                "M": {
+                    "id": {
+                        "S": "1000"
+                    },
+                    "number": {
+                        "N": "1"
+                    },
+                    "title": {
+                        "S": "Mona Lisa"
+                    },
+                    "audioLength": {
+                        "N": "100"
+                    },
+                    "thumbnailUrl": {
+                        "S": "/asset/exhibits/1000/image/square.jpg"
+                    }
+                }
+            },
+            {
+                "M": {
+                    "id": {
+                        "S": "1001"
+                    },
+                    "number": {
+                        "N": "2"
+                    },
+                    "title": {
+                        "S": "Venus of Milo"
+                    },
+                    "audioLength": {
+                        "N": "200"
+                    },
+                    "thumbnailUrl": {
+                        "S": "/asset/exhibits/1001/image/square.jpg"
+                    }
+                }
+            },
+            {
+                "M": {
+                    "id": {
+                        "S": "1002"
+                    },
+                    "number": {
+                        "N": "3"
+                    },
+                    "title": {
+                        "S": "Cena di Emmaus"
+                    },
+                    "audioLength": {
+                        "N": "300"
+                    },
+                    "thumbnailUrl": {
+                        "S": "/asset/exhibits/1000/image/img.png"
+                    }
+                }
+            }
+        ]
+    }
+}
