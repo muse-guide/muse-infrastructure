@@ -1,0 +1,21 @@
+{
+    "name": "muse-app",
+    "version": "0.1.0",
+    "private": true,
+    "dependencies": {
+        "@types/jest": "^29.5.1",
+        "@types/node": "^16.18.26",
+        "typescript": "^5.0.4",
+        "esbuild": "^0.17.18",
+        "@aws-sdk/lib-dynamodb": "^3.306.0",
+        "@types/aws-lambda": "^8.10.114"
+    },
+    "scripts": {
+        "lint": "npx eslint app --ext .ts --max-warnings 0",
+        "prettier": "npx prettier --write app"
+    },
+    "workspaces": [
+        "./client",
+        "./server"
+    ]
+}
