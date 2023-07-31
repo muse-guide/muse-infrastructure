@@ -1,25 +1,28 @@
-import { Construct } from "constructs";
+import {Construct} from "constructs";
 import * as cdk from "aws-cdk-lib";
-import { RemovalPolicy } from "aws-cdk-lib";
-import { ApiGatewayConstruct } from "./api-gateway-construct";
+import {RemovalPolicy} from "aws-cdk-lib";
+import {ApiGatewayConstruct} from "../common/api-gateway-construct";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import * as lambdaNode from "aws-cdk-lib/aws-lambda-nodejs";
-import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as path from "path";
-import { join } from "path";
+import {join} from "path";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as awss3 from "aws-cdk-lib/aws-s3";
 import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
-import { CognitoConstruct } from "./cognito-construct";
+import {CognitoConstruct} from "../common/cognito-construct";
+import {MuseCrmBackendConstruct} from "./muse-crm-backend-construct";
+import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
 
-export interface MuseCrmConstructProps extends cdk.StackProps {
+export interface MuseCrmWebConstructProps extends cdk.StackProps {
     readonly envName: string,
+    readonly crmBackend: MuseCrmBackendConstruct
+    readonly crmStorage: MuseCrmStorageConstruct
 }
 
-export class MuseCrmConstruct extends Construct {
+export class MuseCrmWebConstruct extends Construct {
 
-    constructor(scope: Construct, id: string, props: MuseCrmConstructProps) {
+    public readonly crmDistribution: cloudfront.Distribution
+
+    constructor(scope: Construct, id: string, props: MuseCrmWebConstructProps) {
         super(scope, id);
 
         // App frontend infrastructure definition
@@ -31,14 +34,6 @@ export class MuseCrmConstruct extends Construct {
         });
         const crmUiOriginAccessIdentity = new cloudfront.OriginAccessIdentity(this, "CrmUiOriginAccessIdentity");
         crmUiBucket.grantRead(crmUiOriginAccessIdentity);
-
-        // App backend infrastructure definition
-        const crmExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmExhibitionLambda", {
-            functionName: `crm-${props.envName}-exhibition-lambda`,
-            runtime: lambda.Runtime.NODEJS_16_X,
-            entry: path.join(__dirname, "../src/crm/exhibition-definition.ts"),
-            handler: "handler"
-        });
 
         // Cognito user pool
         const crmCognito = new CognitoConstruct(this, "CrmCognito", {
@@ -62,18 +57,18 @@ export class MuseCrmConstruct extends Construct {
             .addResource("exhibitions")
             .addResource("{id}");
 
-        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(crmExhibitionLambda), {
+        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
 
         // Add Distribution to front API GW, mobile app and asset S3 bucket
-        const crmDistribution = new cloudfront.Distribution(this, "CrmDistribution", {
+        this.crmDistribution = new cloudfront.Distribution(this, "CrmDistribution", {
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
             defaultRootObject: "index.html",
             defaultBehavior: {
-                origin: new origins.S3Origin(crmUiBucket, { originAccessIdentity: crmUiOriginAccessIdentity })
+                origin: new origins.S3Origin(crmUiBucket, {originAccessIdentity: crmUiOriginAccessIdentity})
             },
             errorResponses: [
                 {
@@ -102,10 +97,10 @@ export class MuseCrmConstruct extends Construct {
         const crmUiBucketDeployment = new s3Deployment.BucketDeployment(this, "CrmUiBucketDeployment", {
             destinationBucket: crmUiBucket,
             sources: [s3Deployment.Source.asset(join(__dirname, "../../muse-crm-client/build"))],
-            distribution: crmDistribution
+            distribution: this.crmDistribution
         });
 
         // Outputs
-        new cdk.CfnOutput(this, "CrmDistributionUrl", { value: crmDistribution.distributionDomainName });
+        new cdk.CfnOutput(this, "CrmDistributionUrl", {value: this.crmDistribution.distributionDomainName});
     }
 }

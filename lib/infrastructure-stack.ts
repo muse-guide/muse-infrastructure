@@ -1,9 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import {Stack} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
-import {MuseStorageConstruct} from "./muse-storage-construct";
-import {MuseAppConstruct} from "./muse-app-construct";
-import { MuseCrmConstruct } from "./muse-crm-construct";
+import {MuseCrmWebConstruct} from "./crm/muse-crm-web-construct";
 
 export interface InfrastructureStackProps extends cdk.StackProps {
     readonly envName: string
@@ -25,7 +23,7 @@ export class InfrastructureStack extends Stack {
         //     assetBucketOai: storage.assetBucketOai,
         // })
 
-        const crm = new MuseCrmConstruct(this, "MuseCrmConstruct", {
+        const crm = new MuseCrmWebConstruct(this, "MuseCrmConstruct", {
             envName: props.envName
         })
     }

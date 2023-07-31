@@ -9,19 +9,19 @@ export interface MuseStorageConstructProps extends cdk.StackProps {
     readonly envName: string
 }
 
-export class MuseStorageConstruct extends Construct {
+export class MuseAppStorageConstruct extends Construct {
 
-    public readonly exhibitTable: dynamodb.Table
-    public readonly exhibitionTable: dynamodb.Table
-    public readonly assetBucket: awss3.Bucket
-    public readonly assetBucketOai: cloudfront.OriginAccessIdentity
+    public readonly appExhibitTable: dynamodb.Table
+    public readonly appExhibitionTable: dynamodb.Table
+    public readonly appAssetBucket: awss3.Bucket
+    public readonly appAssetBucketOai: cloudfront.OriginAccessIdentity
 
     constructor(scope: Construct, id: string, props: MuseStorageConstructProps) {
         super(scope, id);
 
         // Exhibit table
-        this.exhibitTable = new dynamodb.Table(this, `MuseExhibitTable`, {
-            tableName: `muse-exhibit-table-${props.envName}`,
+        this.appExhibitTable = new dynamodb.Table(this, `AppExhibitTable`, {
+            tableName: `app-${props.envName}-exhibit-table}`,
             partitionKey: {
                 name: 'id', type: dynamodb.AttributeType.STRING
             },
@@ -33,8 +33,8 @@ export class MuseStorageConstruct extends Construct {
         });
 
         // Exhibition table
-        this.exhibitionTable = new dynamodb.Table(this, `MuseExhibitionTable`, {
-            tableName: `muse-exhibition-table-${props.envName}`,
+        this.appExhibitionTable = new dynamodb.Table(this, `AppExhibitionTable`, {
+            tableName: `app-${props.envName}-exhibition-table`,
             partitionKey: {
                 name: 'id', type: dynamodb.AttributeType.STRING
             },
@@ -46,13 +46,13 @@ export class MuseStorageConstruct extends Construct {
         });
 
         // Asset bucket
-        this.assetBucket = new awss3.Bucket(this, 'AssetBucket', {
-            bucketName: `muse-asset-bucket-${props.envName}`,
+        this.appAssetBucket = new awss3.Bucket(this, 'AppAssetBucket', {
+            bucketName: `app-${props.envName}-asset-bucket`,
             accessControl: awss3.BucketAccessControl.PRIVATE,
             removalPolicy: RemovalPolicy.DESTROY, // TODO: replace for production
             autoDeleteObjects: true
         })
-        this.assetBucketOai = new cloudfront.OriginAccessIdentity(this, 'OriginAccessIdentity');
-        this.assetBucket.grantRead(this.assetBucketOai);
+        this.appAssetBucketOai = new cloudfront.OriginAccessIdentity(this, 'AppOriginAccessIdentity');
+        this.appAssetBucket.grantRead(this.appAssetBucketOai);
     }
 }

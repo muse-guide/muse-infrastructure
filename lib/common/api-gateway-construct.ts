@@ -1,4 +1,4 @@
-import { Construct } from "constructs";
+import {Construct} from "constructs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 
 export interface ApiGatewayConstructProps {
@@ -14,6 +14,22 @@ export class ApiGatewayConstruct extends Construct {
 
     public readonly api: apigateway.RestApi;
     public readonly apiKey: string;
+    private apiKeyGenerator = (() => {
+        const gen = (min: number, max: number) => max++ && [...Array(max - min)].map((s, i) => String.fromCharCode(min + i));
+
+        const sets = {
+            num: gen(48, 57),
+            alphaLower: gen(97, 122),
+            alphaUpper: gen(65, 90)
+        };
+
+        function* iter(len: number, set: string | any[]) {
+            if (set.length < 1) set = Object.values(sets).flat();
+            for (let i = 0; i < len; i++) yield set[Math.random() * set.length | 0];
+        }
+
+        return Object.assign(((len: number, ...set: any[]) => [...iter(len, set.flat())].join("")), sets);
+    })();
 
     constructor(scope: Construct, id: string, props: ApiGatewayConstructProps) { // TODO: add props with domain url
         super(scope, id);
@@ -86,22 +102,4 @@ export class ApiGatewayConstruct extends Construct {
             }
         );
     }
-
-
-    private apiKeyGenerator = (() => {
-        const gen = (min: number, max: number) => max++ && [...Array(max - min)].map((s, i) => String.fromCharCode(min + i));
-
-        const sets = {
-            num: gen(48, 57),
-            alphaLower: gen(97, 122),
-            alphaUpper: gen(65, 90)
-        };
-
-        function* iter(len: number, set: string | any[]) {
-            if (set.length < 1) set = Object.values(sets).flat();
-            for (let i = 0; i < len; i++) yield set[Math.random() * set.length | 0];
-        }
-
-        return Object.assign(((len: number, ...set: any[]) => [...iter(len, set.flat())].join("")), sets);
-    })();
 }

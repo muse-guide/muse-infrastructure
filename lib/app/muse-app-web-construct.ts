@@ -1,29 +1,27 @@
 import * as cdk from "aws-cdk-lib";
-import { RemovalPolicy } from "aws-cdk-lib";
+import {RemovalPolicy} from "aws-cdk-lib";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as awss3 from "aws-cdk-lib/aws-s3";
-import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
-import * as lambdaNode from "aws-cdk-lib/aws-lambda-nodejs";
-import * as lambda from "aws-cdk-lib/aws-lambda";
-import { Construct } from "constructs";
-import { ApiGatewayConstruct } from "./api-gateway-construct";
-import * as path from "path";
-import { join } from "path";
-import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import {Construct} from "constructs";
+import {ApiGatewayConstruct} from "../common/api-gateway-construct";
+import {join} from "path";
+import {MuseAppBackendConstruct} from "./muse-app-backend-construct";
+import {MuseAppStorageConstruct} from "./muse-app-storage-construct";
 
-export interface MuseAppConstructProps extends cdk.StackProps {
+export interface MuseAppWebConstructProps extends cdk.StackProps {
     readonly envName: string,
-    readonly exhibitTable: dynamodb.Table,
-    readonly exhibitionTable: dynamodb.Table,
-    readonly assetBucket: awss3.Bucket
-    readonly assetBucketOai: cloudfront.OriginAccessIdentity
+    readonly appBackend: MuseAppBackendConstruct
+    readonly appStorage: MuseAppStorageConstruct
 }
 
-export class MuseAppConstruct extends Construct {
-    constructor(scope: Construct, id: string, props: MuseAppConstructProps) {
+export class MuseAppWebConstruct extends Construct {
+
+    public readonly appDistribution: cloudfront.Distribution
+
+    constructor(scope: Construct, id: string, props: MuseAppWebConstructProps) {
         super(scope, id);
 
         // App frontend infrastructure definition
@@ -36,39 +34,6 @@ export class MuseAppConstruct extends Construct {
         const appUiOriginAccessIdentity = new cloudfront.OriginAccessIdentity(this, "AppUiOriginAccessIdentity");
         appUiBucket.grantRead(appUiOriginAccessIdentity);
 
-        // App backend infrastructure definition
-        const appExhibitLambda = new lambdaNode.NodejsFunction(this, "AppExhibitLambda", {
-            functionName: `app-${props.envName}-exhibit-lambda`,
-            runtime: lambda.Runtime.NODEJS_16_X,
-            entry: path.join(__dirname, "../src/app/exhibit.ts"),
-            handler: "handler",
-            environment: {
-                EXHIBIT_TABLE: props.exhibitTable.tableName
-            }
-        });
-        appExhibitLambda.addToRolePolicy(
-            new iam.PolicyStatement({
-                actions: ["dynamodb:GetItem"],
-                resources: [props.exhibitTable.tableArn]
-            })
-        );
-
-        const appExhibitionLambda = new lambdaNode.NodejsFunction(this, "AppExhibitionLambda", {
-            functionName: `app-${props.envName}-exhibition-lambda`,
-            runtime: lambda.Runtime.NODEJS_16_X,
-            entry: path.join(__dirname, "../src/app/exhibition.ts"),
-            handler: "handler",
-            environment: {
-                EXHIBITION_TABLE: props.exhibitionTable.tableName
-            }
-        });
-        appExhibitionLambda.addToRolePolicy(
-            new iam.PolicyStatement({
-                actions: ["dynamodb:GetItem"],
-                resources: [props.exhibitionTable.tableArn]
-            })
-        );
-
         // API Gateway definition
         const appApiGateway = new ApiGatewayConstruct(this, "AppApiGateway", {
                 envName: props.envName,
@@ -80,19 +45,19 @@ export class MuseAppConstruct extends Construct {
             .addResource("exhibits")
             .addResource("{id}")
             .addResource("{lang}");
-        appExhibitEndpoint.addMethod("GET", new apigateway.LambdaIntegration(appExhibitLambda));
+        appExhibitEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.appBackend.appExhibitLambda));
         const appExhibitionEndpoint = appApiRoot
             .addResource("exhibitions")
             .addResource("{id}")
             .addResource("{lang}");
-        appExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(appExhibitionLambda));
+        appExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.appBackend.appExhibitionLambda));
 
         // Add Distribution to front API GW, mobile app and asset S3 bucket
-        const appDistribution = new cloudfront.Distribution(this, "Distribution", {
+        this.appDistribution = new cloudfront.Distribution(this, "Distribution", {
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
             defaultRootObject: "index.html",
             defaultBehavior: {
-                origin: new origins.S3Origin(appUiBucket, { originAccessIdentity: appUiOriginAccessIdentity }),
+                origin: new origins.S3Origin(appUiBucket, {originAccessIdentity: appUiOriginAccessIdentity}),
                 viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             },
             errorResponses: [
@@ -114,7 +79,7 @@ export class MuseAppConstruct extends Construct {
                     cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED // TODO enable caching
                 },
                 "asset/*": {
-                    origin: new origins.S3Origin(props.assetBucket, { originAccessIdentity: props.assetBucketOai }),
+                    origin: new origins.S3Origin(props.appStorage.appAssetBucket, {originAccessIdentity: props.appStorage.appAssetBucketOai}),
                     viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
                 }
             }
@@ -124,10 +89,8 @@ export class MuseAppConstruct extends Construct {
         const appUiBucketDeployment = new s3Deployment.BucketDeployment(this, "AppUiBucketDeployment", {
             destinationBucket: appUiBucket,
             sources: [s3Deployment.Source.asset(join(__dirname, "../src/app/client/build"))],
-            distribution: appDistribution
+            distribution: this.appDistribution
         });
 
-        // Outputs
-        new cdk.CfnOutput(this, "AppDistributionUrl", { value: appDistribution.distributionDomainName });
     }
 }
