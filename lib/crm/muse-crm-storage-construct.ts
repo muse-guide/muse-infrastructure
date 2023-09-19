@@ -24,7 +24,7 @@ export class MuseCrmStorageConstruct extends Construct {
                 name: 'id', type: dynamodb.AttributeType.STRING
             },
             sortKey: {
-                name: 'lang', type: dynamodb.AttributeType.STRING
+                name: 'customerId', type: dynamodb.AttributeType.STRING
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             removalPolicy: RemovalPolicy.DESTROY // TODO: replace for production

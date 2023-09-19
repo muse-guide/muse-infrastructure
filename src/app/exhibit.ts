@@ -20,7 +20,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     }
 };
 
-const queryExhibitTable = async (id?: string, lang?: string): Promise<Exhibit> => {
+const queryExhibitTable = async <T>(id?: string, lang?: string): Promise<T> => {
     const params = {
         TableName: process.env.EXHIBIT_TABLE,
         Key: {
@@ -30,7 +30,7 @@ const queryExhibitTable = async (id?: string, lang?: string): Promise<Exhibit> =
     };
 
     const data = await ddbDocClient.send(new GetCommand(params));
-    const exhibit = data.Item as Exhibit;
+    const exhibit = data.Item as T;
 
     if (!exhibit) throw new NotFoundException(`Exhibit with id: ${id} not found.`);
     else return exhibit;

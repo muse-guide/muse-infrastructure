@@ -16,14 +16,17 @@ export class CognitoConstruct extends Construct {
 
         this.userPool = new UserPool(this, "UserPool", {
             userPoolName: `${props.application}-${props.envName}-cognito-user-pool`,
-            signInAliases: {email: true},
+            signInAliases: {email: true, username: false},
             selfSignUpEnabled: true,
             removalPolicy: RemovalPolicy.DESTROY
         });
 
         const appClient = this.userPool.addClient("AppClient", {
             userPoolClientName: `${props.application}-${props.envName}-cognito-user-pool-client`,
-            authFlows: {userSrp: true}
+            authFlows: {
+                userSrp: true,
+                adminUserPassword: true
+            }
         });
     }
 }

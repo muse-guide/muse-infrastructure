@@ -55,12 +55,19 @@ export class MuseCrmWebConstruct extends Construct {
         const crmApiRoot = crmApiGateway.api.root.addResource("v1");
         const crmExhibitionEndpoint = crmApiRoot
             .addResource("exhibitions")
-            .addResource("{id}");
 
-        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmExhibitionLambda), {
-            authorizer: crmApiAuthorizer,
-            authorizationType: apigateway.AuthorizationType.COGNITO
-        });
+        crmExhibitionEndpoint
+            .addResource("{id}")
+            .addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionLambda), {
+                authorizer: crmApiAuthorizer,
+                authorizationType: apigateway.AuthorizationType.COGNITO
+            });
+
+        crmExhibitionEndpoint
+            .addMethod("POST", new apigateway.LambdaIntegration(props.crmBackend.crmCreateExhibitionLambda), {
+                authorizer: crmApiAuthorizer,
+                authorizationType: apigateway.AuthorizationType.COGNITO
+            });
 
 
         // Add Distribution to front API GW, mobile app and asset S3 bucket
@@ -96,7 +103,7 @@ export class MuseCrmWebConstruct extends Construct {
         // App S3 deployment
         const crmUiBucketDeployment = new s3Deployment.BucketDeployment(this, "CrmUiBucketDeployment", {
             destinationBucket: crmUiBucket,
-            sources: [s3Deployment.Source.asset(join(__dirname, "../../muse-crm-client/build"))],
+            sources: [s3Deployment.Source.asset(join(__dirname, "../../../muse-crm-client/build"))],
             distribution: this.crmDistribution
         });
 

@@ -13,23 +13,40 @@ export interface MuseCrmBackendConstructProps extends cdk.StackProps {
 
 export class MuseCrmBackendConstruct extends Construct {
 
-    public readonly crmExhibitionLambda: lambdaNode.NodejsFunction
+    public readonly crmGetExhibitionLambda: lambdaNode.NodejsFunction
+    public readonly crmCreateExhibitionLambda: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: MuseCrmBackendConstructProps) {
         super(scope, id);
 
-        // Exhibition lambda
-        this.crmExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmExhibitionLambda", {
-            functionName: `crm-${props.envName}-exhibition-lambda`,
-            runtime: lambda.Runtime.NODEJS_16_X,
-            entry: path.join(__dirname, "../../src/crm/exhibition-definition.ts"),
+        // Get Exhibition lambda
+        this.crmGetExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionLambda", {
+            functionName: `crm-${props.envName}-get-exhibition-lambda`,
+            runtime: lambda.Runtime.NODEJS_18_X,
+            entry: path.join(__dirname, "../../../muse-crm-server/src/get-exhibition.handler.ts"),
             environment: {
-                EXHIBIT_TABLE: props.crmStorage.crmExhibitionTable.tableName
+                EXHIBITION_TABLE: props.crmStorage.crmExhibitionTable.tableName
             }
         });
-        this.crmExhibitionLambda.addToRolePolicy(
+        this.crmGetExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
-                actions: ["dynamodb:*"], // Tighten permissions
+                actions: ["dynamodb:*"], // TODO: Tighten permissions
+                resources: [props.crmStorage.crmExhibitionTable.tableArn]
+            })
+        );
+
+        // Create Exhibition lambda
+        this.crmCreateExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmCreateExhibitionLambda", {
+            functionName: `crm-${props.envName}-create-exhibition-lambda`,
+            runtime: lambda.Runtime.NODEJS_18_X,
+            entry: path.join(__dirname, "../../../muse-crm-server/src/create-exhibition.handler.ts"),
+            environment: {
+                EXHIBITION_TABLE: props.crmStorage.crmExhibitionTable.tableName
+            }
+        });
+        this.crmGetExhibitionLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [props.crmStorage.crmExhibitionTable.tableArn]
             })
         );
