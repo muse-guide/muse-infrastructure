@@ -11,6 +11,7 @@ export interface MuseCrmStorageConstructProps extends cdk.StackProps {
 
 export class MuseCrmStorageConstruct extends Construct {
     public readonly crmExhibitionTable: dynamodb.Table
+    public readonly crmExhibitionSnapshotTable: dynamodb.Table
     public readonly crmAssetBucket: awss3.Bucket
     public readonly crmAssetBucketOai: cloudfront.OriginAccessIdentity
 
@@ -21,10 +22,23 @@ export class MuseCrmStorageConstruct extends Construct {
         this.crmExhibitionTable = new dynamodb.Table(this, `CrmExhibitionTable`, {
             tableName: `crm-${props.envName}-exhibition-table`,
             partitionKey: {
+                name: 'customerId', type: dynamodb.AttributeType.STRING
+            },
+            sortKey: {
+                name: 'id', type: dynamodb.AttributeType.STRING
+            },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            removalPolicy: RemovalPolicy.DESTROY // TODO: replace for production
+        });
+
+        // Exhibition snapshot table
+        this.crmExhibitionSnapshotTable = new dynamodb.Table(this, `CrmExhibitionSnapshotTable`, {
+            tableName: `crm-${props.envName}-exhibition-snapshot-table`,
+            partitionKey: {
                 name: 'id', type: dynamodb.AttributeType.STRING
             },
             sortKey: {
-                name: 'customerId', type: dynamodb.AttributeType.STRING
+                name: 'lang', type: dynamodb.AttributeType.STRING
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             removalPolicy: RemovalPolicy.DESTROY // TODO: replace for production

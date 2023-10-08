@@ -91,6 +91,5 @@ export class MuseAppWebConstruct extends Construct {
             sources: [s3Deployment.Source.asset(join(__dirname, "../src/app/client/build"))],
             distribution: this.appDistribution
         });
-
     }
 }

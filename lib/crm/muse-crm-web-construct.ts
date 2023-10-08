@@ -64,7 +64,15 @@ export class MuseCrmWebConstruct extends Construct {
             });
 
         crmExhibitionEndpoint
-            .addMethod("POST", new apigateway.LambdaIntegration(props.crmBackend.crmCreateExhibitionLambda), {
+            .addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionsLambda), {
+                authorizer: crmApiAuthorizer,
+                authorizationType: apigateway.AuthorizationType.COGNITO
+            });
+
+        crmExhibitionEndpoint
+            .addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmCreateExhibitionStateMachine, {
+                requestTemplates: { "application/json": mappingTemplate(props.crmBackend.crmCreateExhibitionStateMachine.stateMachineArn) }
+            }), {
                 authorizer: crmApiAuthorizer,
                 authorizationType: apigateway.AuthorizationType.COGNITO
             });
@@ -92,10 +100,16 @@ export class MuseCrmWebConstruct extends Construct {
                             "x-api-key": crmApiGateway.apiKey
                         }
                     }),
+                    allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
                     viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                     responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
                     cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
                     originRequestPolicy: cloudfront.OriginRequestPolicy.fromOriginRequestPolicyId(this, 'AllViewerExceptHostHeader', 'b689b0a8-53d0-40ab-baf2-68738e2966ac')
+                },
+                "asset/*": {
+                    origin: new origins.S3Origin(props.crmStorage.crmAssetBucket, {originAccessIdentity: props.crmStorage.crmAssetBucketOai}),
+                    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
                 }
             }
         });
@@ -111,3 +125,16 @@ export class MuseCrmWebConstruct extends Construct {
         new cdk.CfnOutput(this, "CrmDistributionUrl", {value: this.crmDistribution.distributionDomainName});
     }
 }
+
+const mappingTemplate = (stateMachineArn: string) => `#set($inputString = '')
+{
+    "stateMachineArn": "${stateMachineArn}",
+    #set($inputString = "$inputString,@@body@@: $input.body")
+    #set($inputString = "$inputString,@@sub@@: @@$context.authorizer.claims.sub@@")
+    
+    #set($inputString = "$inputString}")
+    #set($inputString = $inputString.replaceAll("@@",'"'))
+    #set($len = $inputString.length() - 1)
+    "input": "{$util.escapeJavaScript($inputString.substring(1,$len)).replaceAll("\\'","'")}"
+}
+`
