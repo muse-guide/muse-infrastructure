@@ -53,30 +53,39 @@ export class MuseCrmWebConstruct extends Construct {
         });
 
         const crmApiRoot = crmApiGateway.api.root.addResource("v1");
-        const crmExhibitionEndpoint = crmApiRoot
-            .addResource("exhibitions")
+        const crmExhibitionEndpoint = crmApiRoot.addResource("exhibitions")
+        const rootIdResource = crmExhibitionEndpoint.addResource("{id}")
 
-        crmExhibitionEndpoint
-            .addResource("{id}")
-            .addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionLambda), {
-                authorizer: crmApiAuthorizer,
-                authorizationType: apigateway.AuthorizationType.COGNITO
-            });
+        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionsLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
 
-        crmExhibitionEndpoint
-            .addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionsLambda), {
-                authorizer: crmApiAuthorizer,
-                authorizationType: apigateway.AuthorizationType.COGNITO
-            });
+        crmExhibitionEndpoint.addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmCreateExhibitionStateMachine, {
+            requestTemplates: {"application/json": mappingTemplate(props.crmBackend.crmCreateExhibitionStateMachine.stateMachineArn)}
+        }), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
 
-        crmExhibitionEndpoint
-            .addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmCreateExhibitionStateMachine, {
-                requestTemplates: { "application/json": mappingTemplate(props.crmBackend.crmCreateExhibitionStateMachine.stateMachineArn) }
-            }), {
-                authorizer: crmApiAuthorizer,
-                authorizationType: apigateway.AuthorizationType.COGNITO
-            });
+        rootIdResource.addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
 
+        rootIdResource.addMethod("DELETE", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmDeleteExhibitionStateMachine, {
+            requestTemplates: {"application/json": mappingTemplate(props.crmBackend.crmDeleteExhibitionStateMachine.stateMachineArn)}
+        }), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        rootIdResource.addMethod("PUT", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmUpdateExhibitionStateMachine, {
+            requestTemplates: {"application/json": mappingTemplate(props.crmBackend.crmUpdateExhibitionStateMachine.stateMachineArn)}
+        }), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
 
         // Add Distribution to front API GW, mobile app and asset S3 bucket
         this.crmDistribution = new cloudfront.Distribution(this, "CrmDistribution", {
@@ -126,15 +135,36 @@ export class MuseCrmWebConstruct extends Construct {
     }
 }
 
-const mappingTemplate = (stateMachineArn: string) => `#set($inputString = '')
-{
-    "stateMachineArn": "${stateMachineArn}",
-    #set($inputString = "$inputString,@@body@@: $input.body")
-    #set($inputString = "$inputString,@@sub@@: @@$context.authorizer.claims.sub@@")
-    
-    #set($inputString = "$inputString}")
-    #set($inputString = $inputString.replaceAll("@@",'"'))
-    #set($len = $inputString.length() - 1)
-    "input": "{$util.escapeJavaScript($inputString.substring(1,$len)).replaceAll("\\'","'")}"
-}
+const mappingTemplate = (stateMachineArn: string) =>
+`
+    #set($inputString = '')
+    #set($allParams = $input.params())
+    {
+        "stateMachineArn": "${stateMachineArn}",
+        #set($inputString = "$inputString,@@body@@: $input.body")
+        #set($inputString = "$inputString,@@sub@@: @@$context.authorizer.claims.sub@@")
+       
+        #set($inputString = "$inputString, @@path@@:{")
+        #foreach($paramName in $allParams.path.keySet())
+            #set($inputString = "$inputString @@$paramName@@: @@$util.escapeJavaScript($allParams.path.get($paramName))@@")
+            #if($foreach.hasNext)
+                #set($inputString = "$inputString,")
+            #end
+        #end
+        #set($inputString = "$inputString }")
+            
+        #set($inputString = "$inputString, @@querystring@@:{")
+        #foreach($paramName in $allParams.querystring.keySet())
+            #set($inputString = "$inputString @@$paramName@@: @@$util.escapeJavaScript($allParams.querystring.get($paramName))@@")
+            #if($foreach.hasNext)
+                #set($inputString = "$inputString,")
+            #end
+        #end
+        #set($inputString = "$inputString }")
+        
+        #set($inputString = "$inputString}")
+        #set($inputString = $inputString.replaceAll("@@",'"'))
+        #set($len = $inputString.length() - 1)
+        "input": "{$util.escapeJavaScript($inputString.substring(1,$len)).replaceAll("\\'","'")}"
+    }
 `
