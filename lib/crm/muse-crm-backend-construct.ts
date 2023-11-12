@@ -110,6 +110,42 @@ export class MuseCrmBackendConstruct extends Construct {
             })
         );
 
+        // Exhibition Snapshot CRUD
+        const createExhibitionSnapshot = (id: string) => {
+            return new tasks.DynamoPutItem(this, id,
+                {
+                    table: props.crmStorage.crmExhibitionSnapshotTable,
+                    item: {
+                        id: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.id')),
+                        institutionId: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.institutionId')),
+                        lang: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.lang')),
+                        langOptions: tasks.DynamoAttributeValue.fromStringSet(step.JsonPath.listAt('$.langOptions')),
+                        title: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.title')),
+                        subtitle: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.subtitle')),
+                        description: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.description')),
+                        imageUrls: tasks.DynamoAttributeValue.fromStringSet(step.JsonPath.listAt('$.imageUrls')),
+                        version: tasks.DynamoAttributeValue.numberFromString(
+                            step.JsonPath.stringAt("States.Format('{}', $.version)")
+                        ),
+                    },
+                    outputPath: '$',
+                }
+            )
+        }
+
+        const deleteExhibitionSnapshot = (id: string) => {
+            return new tasks.DynamoDeleteItem(this, id,
+                {
+                    table: props.crmStorage.crmExhibitionSnapshotTable,
+                    key: {
+                        "id": tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt("$.id")),
+                        "lang": tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt("$.lang"))
+                    },
+                    outputPath: '$',
+                }
+            )
+        }
+
         // Create Exhibition Snapshot lambda
         this.crmCreateExhibitionSnapshotLambda = new lambdaNode.NodejsFunction(this, "CrmCreateExhibitionSnapshotLambda", {
             functionName: `crm-${props.envName}-create-exhibition-snapshot-lambda`,
@@ -162,6 +198,24 @@ export class MuseCrmBackendConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
+        const updateExhibitionCreateSnapshotMap = new step.Map(this, 'UpdateExhibitionCreateExhibitionSnapshots', {
+            maxConcurrency: 1,
+            resultPath: step.JsonPath.DISCARD,
+            inputPath: step.JsonPath.stringAt('$.langOptionsToAdd')
+        });
+        updateExhibitionCreateSnapshotMap.iterator(createExhibitionSnapshot("UpdateExhibitionCreateExhibitionSnapshotsIterator"))
+
+        const updateExhibitionDeleteSnapshotMap = new step.Map(this, 'UpdateExhibitionDeleteExhibitionSnapshots', {
+            maxConcurrency: 1,
+            resultPath: step.JsonPath.DISCARD,
+            inputPath: step.JsonPath.stringAt('$.langOptionsToDelete')
+        });
+        updateExhibitionDeleteSnapshotMap.iterator(deleteExhibitionSnapshot("UpdateExhibitionDeleteExhibitionSnapshotsIterator"))
+
+        const updateExhibitionSnapshotsParallel = new step.Parallel(this, 'UpdateExhibitionSnapshotsParallel')
+            .branch(updateExhibitionCreateSnapshotMap)
+            .branch(updateExhibitionDeleteSnapshotMap)
+
         this.crmUpdateExhibitionStateMachine = new step.StateMachine(this, 'UpdateExhibitionStateMachine', {
             stateMachineName: `crm-${props.envName}-update-exhibition-state-machine`,
             stateMachineType: step.StateMachineType.EXPRESS,
@@ -176,6 +230,7 @@ export class MuseCrmBackendConstruct extends Construct {
                     outputPath: '$.Payload',
                 }
             )
+                .next(updateExhibitionSnapshotsParallel)
                 .next(new step.Succeed(this, "Updated"))
         });
 
@@ -185,20 +240,11 @@ export class MuseCrmBackendConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
-        const deleteSnapshotMap = new step.Map(this, 'DeleteExhibitionSnapshots', {
+        const deleteExhibitionDeleteSnapshotMap = new step.Map(this, 'DeleteExhibitionDeleteExhibitionSnapshots', {
             maxConcurrency: 1,
             resultPath: step.JsonPath.DISCARD,
         });
-        deleteSnapshotMap.iterator(new tasks.DynamoDeleteItem(this, "DeleteExhibitionSnapshot",
-            {
-                table: props.crmStorage.crmExhibitionSnapshotTable,
-                key: {
-                    "id": tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt("$.id")),
-                    "lang": tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt("$.lang"))
-                },
-                outputPath: '$',
-            }
-        ))
+        deleteExhibitionDeleteSnapshotMap.iterator(deleteExhibitionSnapshot("DeleteExhibitionDeleteExhibitionSnapshotsIterator"))
 
         this.crmDeleteExhibitionStateMachine = new step.StateMachine(this, 'DeleteExhibitionStateMachine', {
             stateMachineName: `crm-${props.envName}-delete-exhibition-state-machine`,
@@ -214,7 +260,7 @@ export class MuseCrmBackendConstruct extends Construct {
                     outputPath: '$.Payload',
                 }
             )
-                .next(deleteSnapshotMap)
+                .next(deleteExhibitionDeleteSnapshotMap)
                 .next(new step.Succeed(this, "Deleted"))
         });
     }
