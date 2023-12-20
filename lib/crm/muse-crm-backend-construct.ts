@@ -17,10 +17,11 @@ export interface MuseCrmBackendConstructProps extends cdk.StackProps {
 
 export class MuseCrmBackendConstruct extends Construct {
 
+    public readonly crmQrCodeGeneratorLambda: lambdaNode.NodejsFunction
+    public readonly crmAssetProcessorLambda: lambdaNode.NodejsFunction
     public readonly crmGetExhibitionLambda: lambdaNode.NodejsFunction
     public readonly crmGetExhibitionsLambda: lambdaNode.NodejsFunction
     public readonly crmCreateExhibitionLambda: lambdaNode.NodejsFunction
-    public readonly crmCreateExhibitionSnapshotLambda: lambdaNode.NodejsFunction
     public readonly crmDeleteExhibitionLambda: lambdaNode.NodejsFunction
     public readonly crmUpdateExhibitionLambda: lambdaNode.NodejsFunction
     public readonly crmCreateExhibitionStateMachine: step.StateMachine
@@ -29,6 +30,34 @@ export class MuseCrmBackendConstruct extends Construct {
 
     constructor(scope: Construct, id: string, props: MuseCrmBackendConstructProps) {
         super(scope, id);
+
+        // QR code generator
+        this.crmQrCodeGeneratorLambda = new lambdaNode.NodejsFunction(this, "CrmQrCodeGeneratorLambda", {
+            functionName: `crm-${props.envName}-qr-code-generator-lambda`,
+            runtime: lambda.Runtime.NODEJS_18_X,
+            entry: path.join(__dirname, "../../../muse-crm-server/src/qr-code.generator.ts"),
+            environment: {
+                APP_DOMAIN: "https://muse.cloud",
+                CRM_ASSET_BUCKET: props.crmStorage.crmAssetBucket.bucketName
+            }
+        });
+        props.crmStorage.crmAssetBucket
+            .grantWrite(this.crmQrCodeGeneratorLambda);
+
+        // Asset processor
+        this.crmAssetProcessorLambda = new lambdaNode.NodejsFunction(this, "CrmAssetProcessorLambda", {
+            functionName: `crm-${props.envName}-asset-processor-lambda`,
+            runtime: lambda.Runtime.NODEJS_18_X,
+            entry: path.join(__dirname, "../../../muse-crm-server/src/asset.processor.ts"),
+            environment: {
+                CRM_ASSET_BUCKET: props.crmStorage.crmAssetBucket.bucketName,
+                APP_ASSET_BUCKET: props.crmStorage.appAssetBucket.bucketName
+            }
+        });
+        props.crmStorage.crmAssetBucket.grantDelete(this.crmAssetProcessorLambda);
+        props.crmStorage.crmAssetBucket.grantReadWrite(this.crmAssetProcessorLambda);
+        props.crmStorage.appAssetBucket.grantDelete(this.crmAssetProcessorLambda);
+        props.crmStorage.appAssetBucket.grantReadWrite(this.crmAssetProcessorLambda);
 
         // Get Exhibition lambda
         this.crmGetExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionLambda", {
@@ -68,13 +97,20 @@ export class MuseCrmBackendConstruct extends Construct {
             runtime: lambda.Runtime.NODEJS_18_X,
             entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-create.handler.ts"),
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
+                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
+                EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
             }
         });
         this.crmCreateExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [props.crmStorage.crmExhibitionTable.tableArn]
+            })
+        );
+        this.crmCreateExhibitionLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["dynamodb:*"], // TODO: Tighten permissions
+                resources: [props.crmStorage.crmExhibitionSnapshotTable.tableArn]
             })
         );
 
@@ -84,13 +120,20 @@ export class MuseCrmBackendConstruct extends Construct {
             runtime: lambda.Runtime.NODEJS_18_X,
             entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-delete.handler.ts"),
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
+                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
+                EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
             }
         });
         this.crmDeleteExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [props.crmStorage.crmExhibitionTable.tableArn]
+            })
+        );
+        this.crmDeleteExhibitionLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["dynamodb:*"], // TODO: Tighten permissions
+                resources: [props.crmStorage.crmExhibitionSnapshotTable.tableArn]
             })
         );
 
@@ -100,7 +143,8 @@ export class MuseCrmBackendConstruct extends Construct {
             runtime: lambda.Runtime.NODEJS_18_X,
             entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-update.handler.ts"),
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
+                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
+                EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
             }
         });
         this.crmUpdateExhibitionLambda.addToRolePolicy(
@@ -109,53 +153,7 @@ export class MuseCrmBackendConstruct extends Construct {
                 resources: [props.crmStorage.crmExhibitionTable.tableArn]
             })
         );
-
-        // Exhibition Snapshot CRUD
-        const createExhibitionSnapshot = (id: string) => {
-            return new tasks.DynamoPutItem(this, id,
-                {
-                    table: props.crmStorage.crmExhibitionSnapshotTable,
-                    item: {
-                        id: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.id')),
-                        institutionId: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.institutionId')),
-                        lang: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.lang')),
-                        langOptions: tasks.DynamoAttributeValue.fromStringSet(step.JsonPath.listAt('$.langOptions')),
-                        title: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.title')),
-                        subtitle: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.subtitle')),
-                        description: tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt('$.description')),
-                        imageUrls: tasks.DynamoAttributeValue.fromStringSet(step.JsonPath.listAt('$.imageUrls')),
-                        version: tasks.DynamoAttributeValue.numberFromString(
-                            step.JsonPath.stringAt("States.Format('{}', $.version)")
-                        ),
-                    },
-                    outputPath: '$',
-                }
-            )
-        }
-
-        const deleteExhibitionSnapshot = (id: string) => {
-            return new tasks.DynamoDeleteItem(this, id,
-                {
-                    table: props.crmStorage.crmExhibitionSnapshotTable,
-                    key: {
-                        "id": tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt("$.id")),
-                        "lang": tasks.DynamoAttributeValue.fromString(step.JsonPath.stringAt("$.lang"))
-                    },
-                    outputPath: '$',
-                }
-            )
-        }
-
-        // Create Exhibition Snapshot lambda
-        this.crmCreateExhibitionSnapshotLambda = new lambdaNode.NodejsFunction(this, "CrmCreateExhibitionSnapshotLambda", {
-            functionName: `crm-${props.envName}-create-exhibition-snapshot-lambda`,
-            runtime: lambda.Runtime.NODEJS_18_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-snapshot-create.handler.ts"),
-            environment: {
-                EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
-            }
-        });
-        this.crmCreateExhibitionSnapshotLambda.addToRolePolicy(
+        this.crmUpdateExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [props.crmStorage.crmExhibitionSnapshotTable.tableArn]
@@ -180,11 +178,16 @@ export class MuseCrmBackendConstruct extends Construct {
                 {
                     lambdaFunction: this.crmCreateExhibitionLambda,
                     outputPath: '$.Payload',
-                }
-            )
-                .next(new tasks.LambdaInvoke(this, "CreateExhibitionSnapshot",
+                })
+                .next(new tasks.LambdaInvoke(this, "GenerateQrCode",
                     {
-                        lambdaFunction: this.crmCreateExhibitionSnapshotLambda,
+                        lambdaFunction: this.crmQrCodeGeneratorLambda,
+                        outputPath: '$.Payload',
+                    }
+                ))
+                .next(new tasks.LambdaInvoke(this, "CreateExhibitionProcessAsset",
+                    {
+                        lambdaFunction: this.crmAssetProcessorLambda,
                         outputPath: '$.Payload',
                     }
                 ))
@@ -198,24 +201,6 @@ export class MuseCrmBackendConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
-        const updateExhibitionCreateSnapshotMap = new step.Map(this, 'UpdateExhibitionCreateExhibitionSnapshots', {
-            maxConcurrency: 1,
-            resultPath: step.JsonPath.DISCARD,
-            inputPath: step.JsonPath.stringAt('$.langOptionsToAdd')
-        });
-        updateExhibitionCreateSnapshotMap.iterator(createExhibitionSnapshot("UpdateExhibitionCreateExhibitionSnapshotsIterator"))
-
-        const updateExhibitionDeleteSnapshotMap = new step.Map(this, 'UpdateExhibitionDeleteExhibitionSnapshots', {
-            maxConcurrency: 1,
-            resultPath: step.JsonPath.DISCARD,
-            inputPath: step.JsonPath.stringAt('$.langOptionsToDelete')
-        });
-        updateExhibitionDeleteSnapshotMap.iterator(deleteExhibitionSnapshot("UpdateExhibitionDeleteExhibitionSnapshotsIterator"))
-
-        const updateExhibitionSnapshotsParallel = new step.Parallel(this, 'UpdateExhibitionSnapshotsParallel')
-            .branch(updateExhibitionCreateSnapshotMap)
-            .branch(updateExhibitionDeleteSnapshotMap)
-
         this.crmUpdateExhibitionStateMachine = new step.StateMachine(this, 'UpdateExhibitionStateMachine', {
             stateMachineName: `crm-${props.envName}-update-exhibition-state-machine`,
             stateMachineType: step.StateMachineType.EXPRESS,
@@ -228,9 +213,13 @@ export class MuseCrmBackendConstruct extends Construct {
                 {
                     lambdaFunction: this.crmUpdateExhibitionLambda,
                     outputPath: '$.Payload',
-                }
-            )
-                .next(updateExhibitionSnapshotsParallel)
+                })
+                .next(new tasks.LambdaInvoke(this, "UpdateExhibitionProcessAsset",
+                    {
+                        lambdaFunction: this.crmAssetProcessorLambda,
+                        outputPath: '$.Payload',
+                    }
+                ))
                 .next(new step.Succeed(this, "Updated"))
         });
 
@@ -239,12 +228,6 @@ export class MuseCrmBackendConstruct extends Construct {
             retention: RetentionDays.ONE_DAY,
             removalPolicy: RemovalPolicy.DESTROY,
         });
-
-        const deleteExhibitionDeleteSnapshotMap = new step.Map(this, 'DeleteExhibitionDeleteExhibitionSnapshots', {
-            maxConcurrency: 1,
-            resultPath: step.JsonPath.DISCARD,
-        });
-        deleteExhibitionDeleteSnapshotMap.iterator(deleteExhibitionSnapshot("DeleteExhibitionDeleteExhibitionSnapshotsIterator"))
 
         this.crmDeleteExhibitionStateMachine = new step.StateMachine(this, 'DeleteExhibitionStateMachine', {
             stateMachineName: `crm-${props.envName}-delete-exhibition-state-machine`,
@@ -258,9 +241,13 @@ export class MuseCrmBackendConstruct extends Construct {
                 {
                     lambdaFunction: this.crmDeleteExhibitionLambda,
                     outputPath: '$.Payload',
-                }
-            )
-                .next(deleteExhibitionDeleteSnapshotMap)
+                })
+                .next(new tasks.LambdaInvoke(this, "DeleteExhibitionProcessAsset",
+                    {
+                        lambdaFunction: this.crmAssetProcessorLambda,
+                        outputPath: '$.Payload',
+                    }
+                ))
                 .next(new step.Succeed(this, "Deleted"))
         });
     }

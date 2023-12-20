@@ -11,6 +11,7 @@ import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
 import {CognitoConstruct} from "../common/cognito-construct";
 import {MuseCrmBackendConstruct} from "./muse-crm-backend-construct";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 export interface MuseCrmWebConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -21,7 +22,6 @@ export interface MuseCrmWebConstructProps extends cdk.StackProps {
 export class MuseCrmWebConstruct extends Construct {
 
     public readonly crmDistribution: cloudfront.Distribution
-
     constructor(scope: Construct, id: string, props: MuseCrmWebConstructProps) {
         super(scope, id);
 
@@ -40,6 +40,19 @@ export class MuseCrmWebConstruct extends Construct {
             envName: props.envName,
             application: "crm"
         });
+
+        const customerAssetUrl = "arn:aws:s3:::" + props.crmStorage.crmAssetBucket.bucketName + "/private/${cognito-identity.amazonaws.com:sub}/*"
+        crmCognito.authenticatedRole.addToPolicy(
+            new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:DeleteObject"
+                ],
+                resources: [customerAssetUrl],
+            })
+        )
 
         // API Gateway definition
         const crmApiGateway = new ApiGatewayConstruct(this, "CrmApiGateway", {
@@ -136,13 +149,14 @@ export class MuseCrmWebConstruct extends Construct {
 }
 
 const mappingTemplate = (stateMachineArn: string) =>
-`
+    `
     #set($inputString = '')
     #set($allParams = $input.params())
     {
         "stateMachineArn": "${stateMachineArn}",
         #set($inputString = "$inputString,@@body@@: $input.body")
         #set($inputString = "$inputString,@@sub@@: @@$context.authorizer.claims.sub@@")
+        #set($inputString = "$inputString,@@identityId@@: @@$allParams.header.identityid@@")
        
         #set($inputString = "$inputString, @@path@@:{")
         #foreach($paramName in $allParams.path.keySet())
@@ -156,6 +170,15 @@ const mappingTemplate = (stateMachineArn: string) =>
         #set($inputString = "$inputString, @@querystring@@:{")
         #foreach($paramName in $allParams.querystring.keySet())
             #set($inputString = "$inputString @@$paramName@@: @@$util.escapeJavaScript($allParams.querystring.get($paramName))@@")
+            #if($foreach.hasNext)
+                #set($inputString = "$inputString,")
+            #end
+        #end
+        #set($inputString = "$inputString }")
+            
+        #set($inputString = "$inputString, @@header@@:{")
+        #foreach($paramName in $allParams.header.keySet())
+            #set($inputString = "$inputString @@$paramName@@: @@$util.escapeJavaScript($allParams.header.get($paramName))@@")
             #if($foreach.hasNext)
                 #set($inputString = "$inputString,")
             #end

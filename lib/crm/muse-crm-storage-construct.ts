@@ -11,9 +11,11 @@ export interface MuseCrmStorageConstructProps extends cdk.StackProps {
 
 export class MuseCrmStorageConstruct extends Construct {
     public readonly crmExhibitionTable: dynamodb.Table
-    public readonly crmExhibitionSnapshotTable: dynamodb.Table
+    public readonly crmExhibitionSnapshotTable: dynamodb.Table // TODO: rename to app
     public readonly crmAssetBucket: awss3.Bucket
     public readonly crmAssetBucketOai: cloudfront.OriginAccessIdentity
+    public readonly appAssetBucket: awss3.Bucket
+    public readonly appAssetBucketOai: cloudfront.OriginAccessIdentity
 
     constructor(scope: Construct, id: string, props: MuseCrmStorageConstructProps) {
         super(scope, id);
@@ -44,14 +46,43 @@ export class MuseCrmStorageConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY // TODO: replace for production
         });
 
-        // Asset bucket
+        // Private asset bucket
         this.crmAssetBucket = new awss3.Bucket(this, 'CrmAssetBucket', {
             bucketName: `crm-${props.envName}-asset-bucket`,
             accessControl: awss3.BucketAccessControl.PRIVATE,
             removalPolicy: RemovalPolicy.DESTROY, // TODO: replace for production
-            autoDeleteObjects: true
+            autoDeleteObjects: true,
+            cors: [{
+                "allowedMethods": [
+                    awss3.HttpMethods.HEAD,
+                    awss3.HttpMethods.GET,
+                    awss3.HttpMethods.PUT,
+                    awss3.HttpMethods.POST,
+                    awss3.HttpMethods.DELETE,
+                ],
+                "allowedOrigins": ["*"], // TODO tighten permissions!!!!
+                "allowedHeaders": ["*"],
+            }]
         })
         this.crmAssetBucketOai = new cloudfront.OriginAccessIdentity(this, 'CrmOriginAccessIdentity');
         this.crmAssetBucket.grantRead(this.crmAssetBucketOai);
+
+        // Public asset bucket
+        this.appAssetBucket = new awss3.Bucket(this, 'AppAssetBucket', {
+            bucketName: `app-${props.envName}-asset-bucket`,
+            accessControl: awss3.BucketAccessControl.PRIVATE,
+            removalPolicy: RemovalPolicy.DESTROY, // TODO: replace for production
+            autoDeleteObjects: true,
+            cors: [{
+                "allowedMethods": [
+                    awss3.HttpMethods.HEAD,
+                    awss3.HttpMethods.GET,
+                ],
+                "allowedOrigins": ["*"], // TODO tighten permissions!!!!
+                "allowedHeaders": ["*"],
+            }]
+        })
+        this.appAssetBucketOai = new cloudfront.OriginAccessIdentity(this, 'AppOriginAccessIdentity');
+        this.appAssetBucket.grantRead(this.appAssetBucketOai);
     }
 }
