@@ -71,7 +71,8 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmGetExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionLambda", {
             functionName: `crm-${props.envName}-get-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-get.handler.ts"),
+            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
+            handler: "exhibitionGetHandler",
             environment: {
                 EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
             }
@@ -79,7 +80,10 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmGetExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionTable.tableArn]
+                resources: [
+                    props.crmStorage.crmExhibitionTable.tableArn,
+                    `${props.crmStorage.crmExhibitionTable.tableArn}/index/*`
+                ]
             })
         );
 
@@ -87,7 +91,8 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmGetExhibitionsLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionsLambda", {
             functionName: `crm-${props.envName}-get-exhibitions-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-get-all.handler.ts"),
+            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
+            handler: "exhibitionGetAllHandler",
             environment: {
                 EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
             }
@@ -95,7 +100,10 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmGetExhibitionsLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionTable.tableArn]
+                resources: [
+                    props.crmStorage.crmExhibitionTable.tableArn,
+                    `${props.crmStorage.crmExhibitionTable.tableArn}/index/*`
+                ]
             })
         );
 
@@ -103,7 +111,8 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmCreateExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmCreateExhibitionLambda", {
             functionName: `crm-${props.envName}-create-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-create.handler.ts"),
+            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
+            handler: "exhibitionCreateHandler",
             environment: {
                 EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
                 EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
@@ -126,7 +135,8 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmDeleteExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmDeleteExhibitionLambda", {
             functionName: `crm-${props.envName}-delete-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-delete.handler.ts"),
+            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
+            handler: "exhibitionDeleteHandler",
             environment: {
                 EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
                 EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
@@ -151,13 +161,13 @@ export class MuseCrmBackendConstruct extends Construct {
             interval: Duration.seconds(1)
         }
 
-        const commonCatch = new step.Pass(this, "CatchAllState")
-
         // Update Exhibition lambda
         this.crmUpdateExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmUpdateExhibitionLambda", {
             functionName: `crm-${props.envName}-update-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-update.handler.ts"),
+
+            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
+            handler: "exhibitionUpdateHandler",
             environment: {
                 EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
                 EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName

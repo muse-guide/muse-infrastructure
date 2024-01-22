@@ -24,14 +24,23 @@ export class MuseCrmStorageConstruct extends Construct {
         this.crmExhibitionTable = new dynamodb.Table(this, `CrmExhibitionTable`, {
             tableName: `crm-${props.envName}-exhibition-table`,
             partitionKey: {
-                name: 'customerId', type: dynamodb.AttributeType.STRING
-            },
-            sortKey: {
-                name: 'id', type: dynamodb.AttributeType.STRING
+                name: 'pk',
+                type: dynamodb.AttributeType.STRING
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             removalPolicy: RemovalPolicy.DESTROY // TODO: replace for production
         });
+        this.crmExhibitionTable.addGlobalSecondaryIndex({
+            indexName: 'gsi1pk-gsi1sk-index',
+            partitionKey: {
+                name: 'gsi1pk',
+                type: dynamodb.AttributeType.STRING
+            },
+            sortKey: {
+                name: 'gsi1sk',
+                type: dynamodb.AttributeType.STRING
+            }
+        })
 
         // Exhibition snapshot table
         this.crmExhibitionSnapshotTable = new dynamodb.Table(this, `CrmExhibitionSnapshotTable`, {

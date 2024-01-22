@@ -105,7 +105,8 @@ export class MuseCrmWebConstruct extends Construct {
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
             defaultRootObject: "index.html",
             defaultBehavior: {
-                origin: new origins.S3Origin(crmUiBucket, {originAccessIdentity: crmUiOriginAccessIdentity})
+                origin: new origins.S3Origin(crmUiBucket, {originAccessIdentity: crmUiOriginAccessIdentity}),
+                viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             },
             errorResponses: [
                 {
