@@ -4,16 +4,20 @@ import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as awss3 from "aws-cdk-lib/aws-s3";
+import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
 import {Construct} from "constructs";
 import {ApiGatewayConstruct} from "../common/api-gateway-construct";
 import {MuseAppBackendConstruct} from "./muse-app-backend-construct";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
+import {join} from "path";
 
 export interface MuseAppWebConstructProps extends cdk.StackProps {
     readonly envName: string,
-    readonly appBackend: MuseAppBackendConstruct
-    readonly appStorage: MuseCrmStorageConstruct
+    readonly backend: MuseAppBackendConstruct
+    readonly storage: MuseCrmStorageConstruct
 }
+
+const API_KEY = "91f5ee14-07d0-46b3-8700-41ecdd4f6305"
 
 export class MuseAppWebConstruct extends Construct {
 
@@ -35,7 +39,8 @@ export class MuseAppWebConstruct extends Construct {
         // API Gateway definition
         const appApiGateway = new ApiGatewayConstruct(this, "AppApiGateway", {
                 envName: props.envName,
-                application: "app"
+                application: "app",
+                apiKey: API_KEY
             }
         );
         const appApiRoot = appApiGateway.api.root.addResource("v1");
@@ -43,7 +48,7 @@ export class MuseAppWebConstruct extends Construct {
             .addResource("exhibitions")
             .addResource("{id}")
 
-        appExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.appBackend.appGetExhibitionLambda));
+        appExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.appGetExhibitionLambda));
 
         // Add Distribution to front API GW, mobile app and asset S3 bucket
         this.appDistribution = new cloudfront.Distribution(this, "AppDistribution", {
@@ -65,25 +70,29 @@ export class MuseAppWebConstruct extends Construct {
                 "v1/*": {
                     origin: new origins.RestApiOrigin(appApiGateway.api, {
                         customHeaders: {
-                            "x-api-key": appApiGateway.apiKey
+                            "x-api-key": API_KEY
                         }
                     }),
                     allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
                     viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED // TODO enable caching
+                    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // TODO enable caching
+                    originRequestPolicy: new cloudfront.OriginRequestPolicy(this, 'AppOriginRequestPolicy', {
+                        cookieBehavior: cloudfront.OriginRequestCookieBehavior.none(),
+                        queryStringBehavior: cloudfront.OriginRequestQueryStringBehavior.allowList('lang'),
+                    })
                 },
                 "asset/*": {
-                    origin: new origins.S3Origin(props.appStorage.appAssetBucket, {originAccessIdentity: props.appStorage.appAssetBucketOai}),
+                    origin: new origins.S3Origin(props.storage.appAssetBucket, {originAccessIdentity: props.storage.appAssetBucketOai}),
                     viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
                 }
             }
         });
 
         // App S3 deployment
-        // const appUiBucketDeployment = new s3Deployment.BucketDeployment(this, "AppUiBucketDeployment", {
-        //     destinationBucket: appUiBucket,
-        //     sources: [s3Deployment.Source.asset(join(__dirname, "../src/app/client/build"))],
-        //     distribution: this.appDistribution
-        // });
+        const appUiBucketDeployment = new s3Deployment.BucketDeployment(this, "AppUiBucketDeployment", {
+            destinationBucket: appUiBucket,
+            sources: [s3Deployment.Source.asset(join(__dirname, "../../../muse-app-client/build"))],
+            distribution: this.appDistribution
+        });
     }
 }

@@ -8,7 +8,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 
 export interface MuseAppBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
-    readonly crmStorage: MuseCrmStorageConstruct
+    readonly storage: MuseCrmStorageConstruct
 }
 
 export class MuseAppBackendConstruct extends Construct {
@@ -22,17 +22,17 @@ export class MuseAppBackendConstruct extends Construct {
         this.appGetExhibitionLambda = new lambdaNode.NodejsFunction(this, "AppGetExhibitionLambda", {
             functionName: `app-${props.envName}-get-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-app-handler.ts"),
+            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-preview-handler.ts"),
             handler: "exhibitionGetHandler",
-            reservedConcurrentExecutions: 1,
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
+                EXHIBITION_TABLE_NAME: props.storage.crmExhibitionTable.tableName
             }
         });
         this.appGetExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:GetItem"],
-                resources: [props.crmStorage.crmExhibitionTable.tableArn]
+                resources: [props.storage.crmExhibitionTable.tableArn]
             })
         );
     }

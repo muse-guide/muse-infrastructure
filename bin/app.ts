@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import {MuseCrmStack} from "../lib/crm/muse-crm-stack";
+import {MuseStack} from "../lib/muse-stack";
 
 const app = new cdk.App();
 
-new MuseCrmStack(app, 'MuseCrmStack', {
+new MuseStack(app, 'MuseCrmStack', { // TODO: replace
     envName: "dev"
 })

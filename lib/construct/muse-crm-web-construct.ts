@@ -15,13 +15,16 @@ import * as iam from "aws-cdk-lib/aws-iam";
 
 export interface MuseCrmWebConstructProps extends cdk.StackProps {
     readonly envName: string,
-    readonly crmBackend: MuseCrmBackendConstruct
-    readonly crmStorage: MuseCrmStorageConstruct
+    readonly backend: MuseCrmBackendConstruct
+    readonly storage: MuseCrmStorageConstruct
 }
+
+const API_KEY = "884a1685-00b6-4f79-80d6-5f01499f25f4"
 
 export class MuseCrmWebConstruct extends Construct {
 
     public readonly crmDistribution: cloudfront.Distribution
+
     constructor(scope: Construct, id: string, props: MuseCrmWebConstructProps) {
         super(scope, id);
 
@@ -41,7 +44,7 @@ export class MuseCrmWebConstruct extends Construct {
             application: "crm"
         });
 
-        const customerAssetUrl = "arn:aws:s3:::" + props.crmStorage.crmAssetBucket.bucketName + "/private/${cognito-identity.amazonaws.com:sub}/*"
+        const customerAssetUrl = "arn:aws:s3:::" + props.storage.crmAssetBucket.bucketName + "/private/${cognito-identity.amazonaws.com:sub}/*"
         crmCognito.authenticatedRole.addToPolicy(
             new iam.PolicyStatement({
                 effect: iam.Effect.ALLOW,
@@ -57,7 +60,8 @@ export class MuseCrmWebConstruct extends Construct {
         // API Gateway definition
         const crmApiGateway = new ApiGatewayConstruct(this, "CrmApiGateway", {
                 envName: props.envName,
-                application: "crm"
+                application: "crm",
+            apiKey: API_KEY
             }
         );
         const crmApiAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, "CrmCognitoAuthorizer", {
@@ -69,32 +73,32 @@ export class MuseCrmWebConstruct extends Construct {
         const crmExhibitionEndpoint = crmApiRoot.addResource("exhibitions")
         const rootIdResource = crmExhibitionEndpoint.addResource("{id}")
 
-        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionsLambda), {
+        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionsLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        crmExhibitionEndpoint.addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmCreateExhibitionStateMachine, {
-            requestTemplates: {"application/json": mappingTemplate(props.crmBackend.crmCreateExhibitionStateMachine.stateMachineArn)}
+        crmExhibitionEndpoint.addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmCreateExhibitionStateMachine, {
+            requestTemplates: {"application/json": mappingTemplate(props.backend.crmCreateExhibitionStateMachine.stateMachineArn)}
         }), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        rootIdResource.addMethod("GET", new apigateway.LambdaIntegration(props.crmBackend.crmGetExhibitionLambda), {
+        rootIdResource.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        rootIdResource.addMethod("DELETE", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmDeleteExhibitionStateMachine, {
-            requestTemplates: {"application/json": mappingTemplate(props.crmBackend.crmDeleteExhibitionStateMachine.stateMachineArn)}
+        rootIdResource.addMethod("DELETE", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmDeleteExhibitionStateMachine, {
+            requestTemplates: {"application/json": mappingTemplate(props.backend.crmDeleteExhibitionStateMachine.stateMachineArn)}
         }), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        rootIdResource.addMethod("PUT", apigateway.StepFunctionsIntegration.startExecution(props.crmBackend.crmUpdateExhibitionStateMachine, {
-            requestTemplates: {"application/json": mappingTemplate(props.crmBackend.crmUpdateExhibitionStateMachine.stateMachineArn)}
+        rootIdResource.addMethod("PUT", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmUpdateExhibitionStateMachine, {
+            requestTemplates: {"application/json": mappingTemplate(props.backend.crmUpdateExhibitionStateMachine.stateMachineArn)}
         }), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
@@ -120,7 +124,7 @@ export class MuseCrmWebConstruct extends Construct {
                 "v1/*": {
                     origin: new origins.RestApiOrigin(crmApiGateway.api, {
                         customHeaders: {
-                            "x-api-key": crmApiGateway.apiKey
+                            "x-api-key": API_KEY
                         }
                     }),
                     allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -130,7 +134,7 @@ export class MuseCrmWebConstruct extends Construct {
                     originRequestPolicy: cloudfront.OriginRequestPolicy.fromOriginRequestPolicyId(this, 'AllViewerExceptHostHeader', 'b689b0a8-53d0-40ab-baf2-68738e2966ac')
                 },
                 "asset/*": {
-                    origin: new origins.S3Origin(props.crmStorage.crmAssetBucket, {originAccessIdentity: props.crmStorage.crmAssetBucketOai}),
+                    origin: new origins.S3Origin(props.storage.crmAssetBucket, {originAccessIdentity: props.storage.crmAssetBucketOai}),
                     viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                     cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
                 }

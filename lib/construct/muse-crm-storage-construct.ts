@@ -11,7 +11,6 @@ export interface MuseCrmStorageConstructProps extends cdk.StackProps {
 
 export class MuseCrmStorageConstruct extends Construct {
     public readonly crmExhibitionTable: dynamodb.Table
-    public readonly crmExhibitionSnapshotTable: dynamodb.Table // TODO: rename to app
     public readonly crmAssetBucket: awss3.Bucket
     public readonly crmAssetBucketOai: cloudfront.OriginAccessIdentity
     public readonly appAssetBucket: awss3.Bucket
@@ -25,6 +24,10 @@ export class MuseCrmStorageConstruct extends Construct {
             tableName: `crm-${props.envName}-exhibition-table`,
             partitionKey: {
                 name: 'pk',
+                type: dynamodb.AttributeType.STRING
+            },
+            sortKey: {
+                name: 'sk',
                 type: dynamodb.AttributeType.STRING
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -41,19 +44,17 @@ export class MuseCrmStorageConstruct extends Construct {
                 type: dynamodb.AttributeType.STRING
             }
         })
-
-        // Exhibition snapshot table
-        this.crmExhibitionSnapshotTable = new dynamodb.Table(this, `CrmExhibitionSnapshotTable`, {
-            tableName: `crm-${props.envName}-exhibition-snapshot-table`,
+        this.crmExhibitionTable.addGlobalSecondaryIndex({
+            indexName: 'gsi2pk-gsi2sk-index',
             partitionKey: {
-                name: 'id', type: dynamodb.AttributeType.STRING
+                name: 'gsi2pk',
+                type: dynamodb.AttributeType.STRING
             },
             sortKey: {
-                name: 'lang', type: dynamodb.AttributeType.STRING
-            },
-            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-            removalPolicy: RemovalPolicy.DESTROY // TODO: replace for production
-        });
+                name: 'gsi2sk',
+                type: dynamodb.AttributeType.STRING
+            }
+        })
 
         // Private asset bucket
         this.crmAssetBucket = new awss3.Bucket(this, 'CrmAssetBucket', {

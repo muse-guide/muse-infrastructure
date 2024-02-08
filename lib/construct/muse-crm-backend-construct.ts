@@ -12,7 +12,7 @@ import {LogGroup, RetentionDays} from "aws-cdk-lib/aws-logs";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
-    readonly crmStorage: MuseCrmStorageConstruct
+    readonly storage: MuseCrmStorageConstruct
 }
 
 export class MuseCrmBackendConstruct extends Construct {
@@ -36,53 +36,57 @@ export class MuseCrmBackendConstruct extends Construct {
         this.errorHandlerLambda = new lambdaNode.NodejsFunction(this, "ErrorHandlerLambdaLambda", {
             functionName: `crm-${props.envName}-error-handler-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/error.handler.ts")
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
+            entry: path.join(__dirname, "../../../muse-crm-server/src/error-handler.ts")
         });
 
         // QR code generator
         this.crmQrCodeGeneratorLambda = new lambdaNode.NodejsFunction(this, "CrmQrCodeGeneratorLambda", {
             functionName: `crm-${props.envName}-qr-code-generator-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/qr-code.generator.ts"),
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
+            entry: path.join(__dirname, "../../../muse-crm-server/src/qr-code-generator.ts"),
             environment: {
-                APP_DOMAIN: "https://muse.cloud",
-                CRM_ASSET_BUCKET: props.crmStorage.crmAssetBucket.bucketName
+                APP_DOMAIN: "https://duz68kh4juaad.cloudfront.net",
+                CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName
             }
         });
-        props.crmStorage.crmAssetBucket
+        props.storage.crmAssetBucket
             .grantWrite(this.crmQrCodeGeneratorLambda);
 
         // Asset processor
         this.crmAssetProcessorLambda = new lambdaNode.NodejsFunction(this, "CrmAssetProcessorLambda", {
             functionName: `crm-${props.envName}-asset-processor-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
-            entry: path.join(__dirname, "../../../muse-crm-server/src/asset.processor.ts"),
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
+            entry: path.join(__dirname, "../../../muse-crm-server/src/asset-processor.ts"),
             environment: {
-                CRM_ASSET_BUCKET: props.crmStorage.crmAssetBucket.bucketName,
-                APP_ASSET_BUCKET: props.crmStorage.appAssetBucket.bucketName
+                CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
+                APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName
             }
         });
-        props.crmStorage.crmAssetBucket.grantDelete(this.crmAssetProcessorLambda);
-        props.crmStorage.crmAssetBucket.grantReadWrite(this.crmAssetProcessorLambda);
-        props.crmStorage.appAssetBucket.grantDelete(this.crmAssetProcessorLambda);
-        props.crmStorage.appAssetBucket.grantReadWrite(this.crmAssetProcessorLambda);
+        props.storage.crmAssetBucket.grantDelete(this.crmAssetProcessorLambda);
+        props.storage.crmAssetBucket.grantReadWrite(this.crmAssetProcessorLambda);
+        props.storage.appAssetBucket.grantDelete(this.crmAssetProcessorLambda);
+        props.storage.appAssetBucket.grantReadWrite(this.crmAssetProcessorLambda);
 
         // Get Exhibition lambda
         this.crmGetExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionLambda", {
             functionName: `crm-${props.envName}-get-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
             handler: "exhibitionGetHandler",
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
+                EXHIBITION_TABLE_NAME: props.storage.crmExhibitionTable.tableName
             }
         });
         this.crmGetExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [
-                    props.crmStorage.crmExhibitionTable.tableArn,
-                    `${props.crmStorage.crmExhibitionTable.tableArn}/index/*`
+                    props.storage.crmExhibitionTable.tableArn,
+                    `${props.storage.crmExhibitionTable.tableArn}/index/*`
                 ]
             })
         );
@@ -91,18 +95,19 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmGetExhibitionsLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionsLambda", {
             functionName: `crm-${props.envName}-get-exhibitions-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
             handler: "exhibitionGetAllHandler",
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName
+                EXHIBITION_TABLE_NAME: props.storage.crmExhibitionTable.tableName
             }
         });
         this.crmGetExhibitionsLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [
-                    props.crmStorage.crmExhibitionTable.tableArn,
-                    `${props.crmStorage.crmExhibitionTable.tableArn}/index/*`
+                    props.storage.crmExhibitionTable.tableArn,
+                    `${props.storage.crmExhibitionTable.tableArn}/index/*`
                 ]
             })
         );
@@ -111,23 +116,22 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmCreateExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmCreateExhibitionLambda", {
             functionName: `crm-${props.envName}-create-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
             handler: "exhibitionCreateHandler",
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
-                EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
+                EXHIBITION_TABLE_NAME: props.storage.crmExhibitionTable.tableName,
             }
         });
         this.crmCreateExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionTable.tableArn]
+                resources: [props.storage.crmExhibitionTable.tableArn]
             })
         );
         this.crmCreateExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionSnapshotTable.tableArn]
             })
         );
 
@@ -135,23 +139,35 @@ export class MuseCrmBackendConstruct extends Construct {
         this.crmDeleteExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmDeleteExhibitionLambda", {
             functionName: `crm-${props.envName}-delete-exhibition-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
             handler: "exhibitionDeleteHandler",
             environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
-                EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
+                EXHIBITION_TABLE_NAME: props.storage.crmExhibitionTable.tableName,
             }
         });
         this.crmDeleteExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionTable.tableArn]
+                resources: [props.storage.crmExhibitionTable.tableArn]
             })
         );
-        this.crmDeleteExhibitionLambda.addToRolePolicy(
+
+        // Update Exhibition lambda
+        this.crmUpdateExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmUpdateExhibitionLambda", {
+            functionName: `crm-${props.envName}-update-exhibition-lambda`,
+            runtime: lambda.Runtime.NODEJS_20_X,
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
+            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
+            handler: "exhibitionUpdateHandler",
+            environment: {
+                EXHIBITION_TABLE_NAME: props.storage.crmExhibitionTable.tableName,
+            }
+        });
+        this.crmUpdateExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionSnapshotTable.tableArn]
+                resources: [props.storage.crmExhibitionTable.tableArn]
             })
         );
 
@@ -160,31 +176,6 @@ export class MuseCrmBackendConstruct extends Construct {
             backoffRate: 2,
             interval: Duration.seconds(1)
         }
-
-        // Update Exhibition lambda
-        this.crmUpdateExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmUpdateExhibitionLambda", {
-            functionName: `crm-${props.envName}-update-exhibition-lambda`,
-            runtime: lambda.Runtime.NODEJS_20_X,
-
-            entry: path.join(__dirname, "../../../muse-crm-server/src/exhibition-handler.ts"),
-            handler: "exhibitionUpdateHandler",
-            environment: {
-                EXHIBITION_TABLE_NAME: props.crmStorage.crmExhibitionTable.tableName,
-                EXHIBITION_SNAPSHOT_TABLE_NAME: props.crmStorage.crmExhibitionSnapshotTable.tableName
-            }
-        });
-        this.crmUpdateExhibitionLambda.addToRolePolicy(
-            new iam.PolicyStatement({
-                actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionTable.tableArn]
-            })
-        );
-        this.crmUpdateExhibitionLambda.addToRolePolicy(
-            new iam.PolicyStatement({
-                actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.crmStorage.crmExhibitionSnapshotTable.tableArn]
-            })
-        );
 
         // Create Exhibition Step Function
         const createExhibitionLogGroup = new LogGroup(this, 'CrmCreateExhibitionLogGroup', {
@@ -281,7 +272,9 @@ export class MuseCrmBackendConstruct extends Construct {
                     })
                     .addRetry(commonRetry)
                 )
-                .next(new step.Succeed(this, "Updated"))
+                .next(new step.Succeed(this, "Updated", {
+                    outputPath: '$.mutation.entityId',
+                }))
             )
         });
 
@@ -326,7 +319,9 @@ export class MuseCrmBackendConstruct extends Construct {
                     })
                     .addRetry(commonRetry)
                 )
-                .next(new step.Succeed(this, "Deleted"))
+                .next(new step.Succeed(this, "Deleted", {
+                    outputPath: '$.mutation.entityId',
+                }))
             )
         });
     }

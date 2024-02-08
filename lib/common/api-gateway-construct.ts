@@ -1,8 +1,10 @@
 import {Construct} from "constructs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import {nanoid} from 'nanoid';
 
 export interface ApiGatewayConstructProps {
     envName: string,
+    apiKey: string,
     application: string;
     throttle?: {
         rateLimit: number,
@@ -13,13 +15,14 @@ export interface ApiGatewayConstructProps {
 export class ApiGatewayConstruct extends Construct {
 
     public readonly api: apigateway.RestApi;
-    public readonly apiKey: string;
 
     constructor(scope: Construct, id: string, props: ApiGatewayConstructProps) { // TODO: add props with domain url
         super(scope, id);
 
+        const appCapitalized = props.application.charAt(0).toUpperCase() + props.application.slice(1);
+
         // REST API definition
-        this.api = new apigateway.RestApi(this, "ApiGateway", {
+        this.api = new apigateway.RestApi(this, `${appCapitalized}ApiGateway`, {
             restApiName: `${props.application}-${props.envName}-api-gateway`,
             defaultMethodOptions: {
                 apiKeyRequired: true
@@ -39,7 +42,7 @@ export class ApiGatewayConstruct extends Construct {
         });
 
         // Usage plan and API key definition
-        const plan = this.api.addUsagePlan("UsagePlan", {
+        const plan = this.api.addUsagePlan(`${appCapitalized}UsagePlan`, {
             name: `${props.application}-${props.envName}-usage-plan`,
             throttle: {
                 rateLimit: props.throttle?.rateLimit ?? 1,
@@ -47,10 +50,9 @@ export class ApiGatewayConstruct extends Construct {
             }
         });
 
-        this.apiKey = "JABsBGLyjCDx6fbWXRQX0v224oLhLo9HcpHK6ptHXHgIhNlx"; // TODO: replace with const apiKeyValue = this.apiKeyGenerator(48)
-        const key = this.api.addApiKey("ApiKey", {
+        const key = this.api.addApiKey(`${appCapitalized}ApiKey`, {
             description: "API key to restrict access to API GW only from distribution. TODO: move to secret manager or sth",
-            value: this.apiKey
+            value: props.apiKey
         });
         plan.addApiKey(key);
         plan.addApiStage({

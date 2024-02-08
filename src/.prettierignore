@@ -1,6 +1,0 @@
-*.iml
-cdk.out/
-.idea/
-node_modules/
-dist/
-build/
