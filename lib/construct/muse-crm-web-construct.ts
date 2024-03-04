@@ -70,8 +70,10 @@ export class MuseCrmWebConstruct extends Construct {
         });
 
         const crmApiRoot = crmApiGateway.api.root.addResource("v1");
+
+        // Exhibition resources
         const crmExhibitionEndpoint = crmApiRoot.addResource("exhibitions")
-        const rootIdResource = crmExhibitionEndpoint.addResource("{id}")
+        const crmExhibitionIdEndpoint = crmExhibitionEndpoint.addResource("{id}")
 
         crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionsLambda), {
             authorizer: crmApiAuthorizer,
@@ -85,21 +87,37 @@ export class MuseCrmWebConstruct extends Construct {
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        rootIdResource.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionLambda), {
+        crmExhibitionIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        rootIdResource.addMethod("DELETE", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmDeleteExhibitionStateMachine, {
+        crmExhibitionIdEndpoint.addMethod("DELETE", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmDeleteExhibitionStateMachine, {
             requestTemplates: {"application/json": mappingTemplate(props.backend.crmDeleteExhibitionStateMachine.stateMachineArn)}
         }), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        rootIdResource.addMethod("PUT", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmUpdateExhibitionStateMachine, {
+        crmExhibitionIdEndpoint.addMethod("PUT", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmUpdateExhibitionStateMachine, {
             requestTemplates: {"application/json": mappingTemplate(props.backend.crmUpdateExhibitionStateMachine.stateMachineArn)}
         }), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        // Exhibit resources
+        const crmExhibitEndpoint = crmApiRoot.addResource("exhibits")
+        const crmExhibitIdEndpoint = crmExhibitEndpoint.addResource("{id}")
+
+        // crmExhibitEndpoint.addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.backend.createExhibitStateMachine, {
+        //     requestTemplates: {"application/json": mappingTemplate(props.backend.createExhibitStateMachine.stateMachineArn)}
+        // }), {
+        //     authorizer: crmApiAuthorizer,
+        //     authorizationType: apigateway.AuthorizationType.COGNITO
+        // });
+
+        crmExhibitEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.createExhibitLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });

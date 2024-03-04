@@ -10,7 +10,7 @@ export interface MuseCrmStorageConstructProps extends cdk.StackProps {
 }
 
 export class MuseCrmStorageConstruct extends Construct {
-    public readonly crmExhibitionTable: dynamodb.Table
+    public readonly crmResourceTable: dynamodb.Table
     public readonly crmAssetBucket: awss3.Bucket
     public readonly crmAssetBucketOai: cloudfront.OriginAccessIdentity
     public readonly appAssetBucket: awss3.Bucket
@@ -20,8 +20,8 @@ export class MuseCrmStorageConstruct extends Construct {
         super(scope, id);
 
         // Exhibition table
-        this.crmExhibitionTable = new dynamodb.Table(this, `CrmExhibitionTable`, {
-            tableName: `crm-${props.envName}-exhibition-table`,
+        this.crmResourceTable = new dynamodb.Table(this, `CrmExhibitionTable`, {
+            tableName: `crm-${props.envName}-resource-table`,
             partitionKey: {
                 name: 'pk',
                 type: dynamodb.AttributeType.STRING
@@ -33,7 +33,7 @@ export class MuseCrmStorageConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             removalPolicy: RemovalPolicy.DESTROY // TODO: replace for production
         });
-        this.crmExhibitionTable.addGlobalSecondaryIndex({
+        this.crmResourceTable.addGlobalSecondaryIndex({
             indexName: 'gsi1pk-gsi1sk-index',
             partitionKey: {
                 name: 'gsi1pk',
@@ -44,7 +44,7 @@ export class MuseCrmStorageConstruct extends Construct {
                 type: dynamodb.AttributeType.STRING
             }
         })
-        this.crmExhibitionTable.addGlobalSecondaryIndex({
+        this.crmResourceTable.addGlobalSecondaryIndex({
             indexName: 'gsi2pk-gsi2sk-index',
             partitionKey: {
                 name: 'gsi2pk',

@@ -26,13 +26,13 @@ export class MuseAppBackendConstruct extends Construct {
             handler: "exhibitionGetHandler",
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             environment: {
-                EXHIBITION_TABLE_NAME: props.storage.crmExhibitionTable.tableName
+                RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
             }
         });
         this.appGetExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:GetItem"],
-                resources: [props.storage.crmExhibitionTable.tableArn]
+                resources: [props.storage.crmResourceTable.tableArn]
             })
         );
     }
