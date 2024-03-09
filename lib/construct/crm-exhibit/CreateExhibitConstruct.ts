@@ -14,7 +14,6 @@ import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
 export interface CreateExhibitConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct,
-    readonly errorHandlerLambda: lambdaNode.NodejsFunction,
     readonly imageProcessorLambda: lambdaNode.NodejsFunction,
     readonly qrCodeGeneratorLambda: lambdaNode.NodejsFunction,
     readonly audioProcessorLambda: lambdaNode.NodejsFunction,
@@ -61,13 +60,11 @@ export class CreateExhibitConstruct extends Construct {
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
-        const createExhibitPassMutationState = new step.Pass(this, 'CreateExhibitPassMutationState');
-
         const createExhibitGenerateQrCodeState = new tasks.LambdaInvoke(this, "CreateExhibitGenerateQrCodeState",
             {
                 lambdaFunction: props.qrCodeGeneratorLambda,
                 inputPath: '$.asset.qrCode',
-                outputPath: '$.entityId',
+                outputPath: '$',
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
@@ -80,7 +77,7 @@ export class CreateExhibitConstruct extends Construct {
             {
                 lambdaFunction: props.imageProcessorLambda,
                 inputPath: '$.asset.images',
-                outputPath: '$.entityId',
+                outputPath: '$',
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
@@ -101,7 +98,7 @@ export class CreateExhibitConstruct extends Construct {
             {
                 lambdaFunction: props.audioProcessorLambda,
                 inputPath: '$.asset.audios',
-                outputPath: '$.entityId',
+                outputPath: '$',
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
@@ -140,7 +137,6 @@ export class CreateExhibitConstruct extends Construct {
             'ParallelCreateExhibit'
         );
 
-        parallelCreateExhibit.branch(createExhibitPassMutationState);
         parallelCreateExhibit.branch(createExhibitGenerateQrCodeState);
         parallelCreateExhibit.branch(createExhibitChoiceProcessImagesState);
         parallelCreateExhibit.branch(createExhibitChoiceProcessAudioState);
@@ -162,7 +158,6 @@ export class CreateExhibitConstruct extends Construct {
 
         // Create Exhibit lambda
         this.createExhibitLambda = new lambdaNode.NodejsFunction(this, "CreateExhibitLambda", {
-
             functionName: `crm-${props.envName}-create-exhibit-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
@@ -179,11 +174,6 @@ export class CreateExhibitConstruct extends Construct {
                 resources: [props.storage.crmResourceTable.tableArn]
             })
         );
-        this.createExhibitLambda.addToRolePolicy(
-            new iam.PolicyStatement({
-                actions: ["dynamodb:*"], // TODO: Tighten permissions
-            })
-        )
         this.createExhibitLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 resources: [this.createExhibitStateMachine.stateMachineArn],

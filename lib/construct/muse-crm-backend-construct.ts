@@ -10,6 +10,9 @@ import {MuseCrmDeleteExhibitionConstruct} from "./crm-exhibition/muse-crm-delete
 import {MuseCrmGetExhibitionConstruct} from "./crm-exhibition/muse-crm-get-exhibtion-construct";
 import {MuseCrmGetExhibitionsConstruct} from "./crm-exhibition/muse-crm-get-exhibtions-construct";
 import {CreateExhibitConstruct} from "./crm-exhibit/CreateExhibitConstruct";
+import {GetExhibitConstruct} from "./crm-exhibit/GetExhibtConstruct";
+import {GetExhibitsConstruct} from "./crm-exhibit/GetExhibtsConstruct";
+import {DeleteExhibitConstruct} from "./crm-exhibit/DeleteExhibitConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -27,7 +30,9 @@ export class MuseCrmBackendConstruct extends Construct {
 
     // Exhibit
     public readonly createExhibitLambda: lambdaNode.NodejsFunction
-    public readonly createExhibitStateMachine: step.StateMachine
+    public readonly getExhibitLambda: lambdaNode.NodejsFunction
+    public readonly getExhibitsLambda: lambdaNode.NodejsFunction
+    public readonly deleteExhibitLambda: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: MuseCrmBackendConstructProps) {
         super(scope, id);
@@ -92,12 +97,35 @@ export class MuseCrmBackendConstruct extends Construct {
             envName: props.envName,
             storage: props.storage,
             imageProcessorLambda: sharedLambdas.crmImageProcessorLambda,
-            errorHandlerLambda: sharedLambdas.errorHandlerLambda,
             qrCodeGeneratorLambda: sharedLambdas.crmQrCodeGeneratorLambda,
             audioProcessorLambda: sharedLambdas.crmAudioProcessorLambda
         });
 
         this.createExhibitLambda = createExhibitConstruct.createExhibitLambda
-        this.createExhibitStateMachine = createExhibitConstruct.createExhibitStateMachine
+
+        // Get Exhibit Construct
+        const getExhibitConstruct = new GetExhibitConstruct(this, 'GetExhibitConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getExhibitLambda = getExhibitConstruct.getExhibitLambda
+
+        // Get Exhibits Construct
+        const getExhibitsConstruct = new GetExhibitsConstruct(this, 'GetExhibitsConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getExhibitsLambda = getExhibitsConstruct.getExhibitsLambda
+
+        // Delete Exhibit Construct
+        const deleteExhibitConstruct = new DeleteExhibitConstruct(this, 'DeleteExhibitConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+            deleteAssetLambda: sharedLambdas.crmDeleteAssetLambda,
+        });
+
+        this.deleteExhibitLambda = deleteExhibitConstruct.deleteExhibitLambda
     }
 }

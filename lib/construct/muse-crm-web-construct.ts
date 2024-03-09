@@ -61,7 +61,7 @@ export class MuseCrmWebConstruct extends Construct {
         const crmApiGateway = new ApiGatewayConstruct(this, "CrmApiGateway", {
                 envName: props.envName,
                 application: "crm",
-            apiKey: API_KEY
+                apiKey: API_KEY
             }
         );
         const crmApiAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, "CrmCognitoAuthorizer", {
@@ -75,6 +75,11 @@ export class MuseCrmWebConstruct extends Construct {
         const crmExhibitionEndpoint = crmApiRoot.addResource("exhibitions")
         const crmExhibitionIdEndpoint = crmExhibitionEndpoint.addResource("{id}")
 
+        crmExhibitionIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
         crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionsLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
@@ -83,11 +88,6 @@ export class MuseCrmWebConstruct extends Construct {
         crmExhibitionEndpoint.addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmCreateExhibitionStateMachine, {
             requestTemplates: {"application/json": mappingTemplate(props.backend.crmCreateExhibitionStateMachine.stateMachineArn)}
         }), {
-            authorizer: crmApiAuthorizer,
-            authorizationType: apigateway.AuthorizationType.COGNITO
-        });
-
-        crmExhibitionIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
@@ -110,14 +110,22 @@ export class MuseCrmWebConstruct extends Construct {
         const crmExhibitEndpoint = crmApiRoot.addResource("exhibits")
         const crmExhibitIdEndpoint = crmExhibitEndpoint.addResource("{id}")
 
-        // crmExhibitEndpoint.addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.backend.createExhibitStateMachine, {
-        //     requestTemplates: {"application/json": mappingTemplate(props.backend.createExhibitStateMachine.stateMachineArn)}
-        // }), {
-        //     authorizer: crmApiAuthorizer,
-        //     authorizationType: apigateway.AuthorizationType.COGNITO
-        // });
-
         crmExhibitEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.createExhibitLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmExhibitIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmExhibitEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitsLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmExhibitIdEndpoint.addMethod("DELETE", new apigateway.LambdaIntegration(props.backend.deleteExhibitLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
