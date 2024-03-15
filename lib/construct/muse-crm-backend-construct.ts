@@ -13,6 +13,7 @@ import {CreateExhibitConstruct} from "./crm-exhibit/CreateExhibitConstruct";
 import {GetExhibitConstruct} from "./crm-exhibit/GetExhibtConstruct";
 import {GetExhibitsConstruct} from "./crm-exhibit/GetExhibtsConstruct";
 import {DeleteExhibitConstruct} from "./crm-exhibit/DeleteExhibitConstruct";
+import {UpdateExhibitConstruct} from "./crm-exhibit/UpdateExhibitConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -33,6 +34,7 @@ export class MuseCrmBackendConstruct extends Construct {
     public readonly getExhibitLambda: lambdaNode.NodejsFunction
     public readonly getExhibitsLambda: lambdaNode.NodejsFunction
     public readonly deleteExhibitLambda: lambdaNode.NodejsFunction
+    public readonly updateExhibitLambda: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: MuseCrmBackendConstructProps) {
         super(scope, id);
@@ -127,5 +129,16 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.deleteExhibitLambda = deleteExhibitConstruct.deleteExhibitLambda
+
+        // Update Exhibit Construct
+        const updateExhibitConstruct = new UpdateExhibitConstruct(this, 'UpdateExhibitConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+            imageProcessorLambda: sharedLambdas.crmImageProcessorLambda,
+            audioProcessorLambda: sharedLambdas.crmAudioProcessorLambda,
+            deleteAssetLambda: sharedLambdas.crmDeleteAssetLambda
+        });
+
+        this.updateExhibitLambda = updateExhibitConstruct.updateExhibitLambda
     }
 }

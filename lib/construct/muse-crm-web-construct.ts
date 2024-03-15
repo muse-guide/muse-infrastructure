@@ -130,6 +130,11 @@ export class MuseCrmWebConstruct extends Construct {
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
+        crmExhibitIdEndpoint.addMethod("PUT", new apigateway.LambdaIntegration(props.backend.updateExhibitLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
         // Add Distribution to front API GW, mobile app and asset S3 bucket
         this.crmDistribution = new cloudfront.Distribution(this, "CrmDistribution", {
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
