@@ -14,6 +14,7 @@ import {GetExhibitConstruct} from "./crm-exhibit/GetExhibtConstruct";
 import {GetExhibitsConstruct} from "./crm-exhibit/GetExhibtsConstruct";
 import {DeleteExhibitConstruct} from "./crm-exhibit/DeleteExhibitConstruct";
 import {UpdateExhibitConstruct} from "./crm-exhibit/UpdateExhibitConstruct";
+import {AudioPreviewConstruct} from "./crm-audio/AudioPreviewConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -35,6 +36,9 @@ export class MuseCrmBackendConstruct extends Construct {
     public readonly getExhibitsLambda: lambdaNode.NodejsFunction
     public readonly deleteExhibitLambda: lambdaNode.NodejsFunction
     public readonly updateExhibitLambda: lambdaNode.NodejsFunction
+
+    // Audio
+    public readonly generateAudioPreviewLambda: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: MuseCrmBackendConstructProps) {
         super(scope, id);
@@ -140,5 +144,13 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.updateExhibitLambda = updateExhibitConstruct.updateExhibitLambda
+
+        // Generate Audio Preview Construct
+        const generateAudioPreviewConstruct = new AudioPreviewConstruct(this, 'AudioPreviewConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.generateAudioPreviewLambda = generateAudioPreviewConstruct.audioPreviewLambda
     }
 }

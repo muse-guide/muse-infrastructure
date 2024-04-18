@@ -45,6 +45,7 @@ export class MuseCrmWebConstruct extends Construct {
         });
 
         const customerAssetUrl = "arn:aws:s3:::" + props.storage.crmAssetBucket.bucketName + "/private/${cognito-identity.amazonaws.com:sub}/*"
+        const tmpAssetUrl = "arn:aws:s3:::" + props.storage.crmAssetBucket.bucketName + "/public/tmp/*"
         crmCognito.authenticatedRole.addToPolicy(
             new iam.PolicyStatement({
                 effect: iam.Effect.ALLOW,
@@ -53,7 +54,10 @@ export class MuseCrmWebConstruct extends Construct {
                     "s3:GetObject",
                     "s3:DeleteObject"
                 ],
-                resources: [customerAssetUrl],
+                resources: [
+                    customerAssetUrl,
+                    tmpAssetUrl
+                ],
             })
         )
 
@@ -131,6 +135,14 @@ export class MuseCrmWebConstruct extends Construct {
         });
 
         crmExhibitIdEndpoint.addMethod("PUT", new apigateway.LambdaIntegration(props.backend.updateExhibitLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        // Audio resources
+        const crmAudioEndpoint = crmApiRoot.addResource("audio")
+
+        crmAudioEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.generateAudioPreviewLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });

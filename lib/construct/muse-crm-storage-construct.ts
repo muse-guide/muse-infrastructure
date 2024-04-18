@@ -77,6 +77,11 @@ export class MuseCrmStorageConstruct extends Construct {
         this.crmAssetBucketOai = new cloudfront.OriginAccessIdentity(this, 'CrmOriginAccessIdentity');
         this.crmAssetBucket.grantRead(this.crmAssetBucketOai);
 
+        this.crmAssetBucket.addLifecycleRule({
+            expiration: cdk.Duration.days(1),
+            prefix: 'public/tmp',
+        })
+
         // Public asset bucket
         this.appAssetBucket = new awss3.Bucket(this, 'AppAssetBucket', {
             bucketName: `app-${props.envName}-asset-bucket`,
