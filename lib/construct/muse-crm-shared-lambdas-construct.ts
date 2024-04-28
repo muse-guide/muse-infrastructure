@@ -35,12 +35,13 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             functionName: `crm-${props.envName}-image-processor-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
-            timeout: cdk.Duration.seconds(30),
             entry: path.join(__dirname, "../../../muse-crm-server/src/image-processor.ts"),
             environment: {
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
                 APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName
-            }
+            },
+            timeout: cdk.Duration.seconds(120),
+            memorySize: 512
         });
         props.storage.crmAssetBucket.grantReadWrite(this.crmImageProcessorLambda);
         props.storage.appAssetBucket.grantReadWrite(this.crmImageProcessorLambda);
