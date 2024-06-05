@@ -44,11 +44,21 @@ export class MuseAppWebConstruct extends Construct {
             }
         );
         const appApiRoot = appApiGateway.api.root.addResource("v1");
+
+        // Exhibition resources
         const appExhibitionEndpoint = appApiRoot
             .addResource("exhibitions")
             .addResource("{id}")
 
-        appExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.appGetExhibitionLambda));
+        appExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitionPreviewLambda));
+
+        // Exhibit resources
+        const appExhibitEndpoint = appApiRoot.addResource("exhibits")
+        const appExhibitIdEndpoint = appExhibitEndpoint.addResource("{id}")
+
+        appExhibitEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitPreviewsLambda));
+
+        appExhibitIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitPreviewLambda));
 
         // Add Distribution to front API GW, mobile app and asset S3 bucket
         this.appDistribution = new cloudfront.Distribution(this, "AppDistribution", {
@@ -78,7 +88,13 @@ export class MuseAppWebConstruct extends Construct {
                     cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // TODO enable caching
                     originRequestPolicy: new cloudfront.OriginRequestPolicy(this, 'AppOriginRequestPolicy', {
                         cookieBehavior: cloudfront.OriginRequestCookieBehavior.none(),
-                        queryStringBehavior: cloudfront.OriginRequestQueryStringBehavior.allowList('lang'),
+                        queryStringBehavior: cloudfront.OriginRequestQueryStringBehavior.allowList(
+                            'lang',
+                            'exhibition-id',
+                            'page-size',
+                            'next-page-key',
+                            'number'
+                        ),
                     })
                 },
                 "asset/*": {

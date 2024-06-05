@@ -14,10 +14,11 @@ export interface MuseCrmCommonLambdasConstructProps extends cdk.StackProps {
 export class MuseCrmSharedLambdasConstruct extends Construct {
 
     public readonly errorHandlerLambda: lambdaNode.NodejsFunction
-    public readonly crmImageProcessorLambda: lambdaNode.NodejsFunction
-    public readonly crmDeleteAssetLambda: lambdaNode.NodejsFunction
-    public readonly crmQrCodeGeneratorLambda: lambdaNode.NodejsFunction
-    public readonly crmAudioProcessorLambda: lambdaNode.NodejsFunction
+    public readonly imageProcessorLambda: lambdaNode.NodejsFunction
+    public readonly deleteAssetLambda: lambdaNode.NodejsFunction
+    public readonly qrCodeGeneratorLambda: lambdaNode.NodejsFunction
+    public readonly audioProcessorLambda: lambdaNode.NodejsFunction
+    public readonly cdnManager: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: MuseCrmCommonLambdasConstructProps) {
         super(scope, id);
@@ -31,7 +32,7 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
         });
 
         // Image processor
-        this.crmImageProcessorLambda = new lambdaNode.NodejsFunction(this, "CrmImageProcessorLambda", {
+        this.imageProcessorLambda = new lambdaNode.NodejsFunction(this, "CrmImageProcessorLambda", {
             functionName: `crm-${props.envName}-image-processor-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
@@ -43,11 +44,11 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             timeout: cdk.Duration.seconds(120),
             memorySize: 512
         });
-        props.storage.crmAssetBucket.grantReadWrite(this.crmImageProcessorLambda);
-        props.storage.appAssetBucket.grantReadWrite(this.crmImageProcessorLambda);
+        props.storage.crmAssetBucket.grantReadWrite(this.imageProcessorLambda);
+        props.storage.appAssetBucket.grantReadWrite(this.imageProcessorLambda);
 
         // Audio processor
-        this.crmAudioProcessorLambda = new lambdaNode.NodejsFunction(this, "CrmAudioProcessorLambda", {
+        this.audioProcessorLambda = new lambdaNode.NodejsFunction(this, "CrmAudioProcessorLambda", {
             functionName: `crm-${props.envName}-audio-processor-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
@@ -57,22 +58,22 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
                 APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName
             }
         });
-        props.storage.crmAssetBucket.grantReadWrite(this.crmAudioProcessorLambda);
-        props.storage.appAssetBucket.grantReadWrite(this.crmAudioProcessorLambda);
+        props.storage.crmAssetBucket.grantReadWrite(this.audioProcessorLambda);
+        props.storage.appAssetBucket.grantReadWrite(this.audioProcessorLambda);
 
         const pollySynthesizeSpeechPolicyStatement = new iam.PolicyStatement({
             actions: ['polly:SynthesizeSpeech'],
             resources: ['*'],
         });
 
-        this.crmAudioProcessorLambda.role?.attachInlinePolicy(
+        this.audioProcessorLambda.role?.attachInlinePolicy(
             new iam.Policy(this, 'SynthesizeSpeechPolicy', {
                 statements: [pollySynthesizeSpeechPolicyStatement],
             }),
         );
 
         // QR code generator
-        this.crmQrCodeGeneratorLambda = new lambdaNode.NodejsFunction(this, "CrmQrCodeGeneratorLambda", {
+        this.qrCodeGeneratorLambda = new lambdaNode.NodejsFunction(this, "CrmQrCodeGeneratorLambda", {
             functionName: `crm-${props.envName}-qr-code-generator-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
@@ -83,10 +84,10 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             }
         });
         props.storage.crmAssetBucket
-            .grantWrite(this.crmQrCodeGeneratorLambda);
+            .grantWrite(this.qrCodeGeneratorLambda);
 
-        // Delete asset hadler
-        this.crmDeleteAssetLambda = new lambdaNode.NodejsFunction(this, "CrmDeleteAssetLambda", {
+        // Delete asset handler
+        this.deleteAssetLambda = new lambdaNode.NodejsFunction(this, "CrmDeleteAssetLambda", {
             functionName: `crm-${props.envName}-delete-asset-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
@@ -96,7 +97,31 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
                 APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName
             }
         });
-        props.storage.crmAssetBucket.grantDelete(this.crmDeleteAssetLambda);
-        props.storage.appAssetBucket.grantDelete(this.crmDeleteAssetLambda);
+        props.storage.crmAssetBucket.grantDelete(this.deleteAssetLambda);
+        props.storage.appAssetBucket.grantDelete(this.deleteAssetLambda);
+
+        // CDN manager
+        const cdnArn = 'arn:aws:cloudfront::654493660708:distribution/E3C5VVIK6TDVAL'; // TODO deliver it nicer
+        this.cdnManager = new lambdaNode.NodejsFunction(this, "AppCdnManager", {
+            functionName: `crm-${props.envName}-cdn-manager-lambda`,
+            runtime: lambda.Runtime.NODEJS_20_X,
+            // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
+            entry: path.join(__dirname, "../../../muse-crm-server/src/cdn-manager.ts"),
+            environment: {
+                APP_DISTRIBUTION: cdnArn
+            }
+        });
+
+        const createInvalidationPolicyStatement = new iam.PolicyStatement({
+            actions: ['cloudfront:CreateInvalidation'],
+            effect: iam.Effect.ALLOW,
+            resources: [cdnArn],
+        });
+
+        this.cdnManager.role?.attachInlinePolicy(
+            new iam.Policy(this, 'CreateInvalidationPolicy', {
+                statements: [createInvalidationPolicyStatement],
+            }),
+        );
     }
 }

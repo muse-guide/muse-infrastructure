@@ -6,32 +6,35 @@ import * as path from "path";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
 import * as iam from "aws-cdk-lib/aws-iam";
 
-export interface MuseCrmGetExhibitionsConstructProps extends cdk.StackProps {
+export interface GetExhibitPreviewsConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct
 }
 
-export class MuseCrmGetExhibitionsConstruct extends Construct {
+export class GetExhibitPreviewsConstruct extends Construct {
 
-    public readonly crmGetExhibitionsLambda: lambdaNode.NodejsFunction
+    public readonly getExhibitPreviewsLambda: lambdaNode.NodejsFunction
 
-    constructor(scope: Construct, id: string, props: MuseCrmGetExhibitionsConstructProps) {
+    constructor(scope: Construct, id: string, props: GetExhibitPreviewsConstructProps) {
         super(scope, id);
 
-        // Get Exhibitions lambda
-        this.crmGetExhibitionsLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionsLambda", {
-            functionName: `crm-${props.envName}-get-exhibitions-lambda`,
+        // Get Exhibition lambda
+        this.getExhibitPreviewsLambda = new lambdaNode.NodejsFunction(this, "GetExhibitPreviewsLambda", {
+            functionName: `crm-${props.envName}-get-exhibit-previews-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
-            entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibition-handler.ts"),
-            handler: "exhibitionGetAllHandler",
+            entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibit-preview-handler.ts"),
+            handler: "exhibitPreviewsGetHandler",
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
-            }
+            },
+            bundling: {
+                minify: true,
+            },
         });
-        this.crmGetExhibitionsLambda.addToRolePolicy(
+        this.getExhibitPreviewsLambda.addToRolePolicy(
             new iam.PolicyStatement({
-                actions: ["dynamodb:*"], // TODO: Tighten permissions
+                actions: ["dynamodb:Query"], // TODO: Tighten permissions
                 resources: [
                     props.storage.crmResourceTable.tableArn,
                     `${props.storage.crmResourceTable.tableArn}/index/*`

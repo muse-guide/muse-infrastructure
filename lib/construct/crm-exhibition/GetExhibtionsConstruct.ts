@@ -6,30 +6,30 @@ import * as path from "path";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
 import * as iam from "aws-cdk-lib/aws-iam";
 
-export interface MuseCrmGetExhibitionConstructProps extends cdk.StackProps {
+export interface GetExhibitionsConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct
 }
 
-export class MuseCrmGetExhibitionConstruct extends Construct {
+export class GetExhibitionsConstruct extends Construct {
 
-    public readonly crmGetExhibitionLambda: lambdaNode.NodejsFunction
+    public readonly getExhibitionsLambda: lambdaNode.NodejsFunction
 
-    constructor(scope: Construct, id: string, props: MuseCrmGetExhibitionConstructProps) {
+    constructor(scope: Construct, id: string, props: GetExhibitionsConstructProps) {
         super(scope, id);
 
-        // Get Exhibition lambda
-        this.crmGetExhibitionLambda = new lambdaNode.NodejsFunction(this, "CrmGetExhibitionLambda", {
-            functionName: `crm-${props.envName}-get-exhibition-lambda`,
+        // Get Exhibitionion lambda
+        this.getExhibitionsLambda = new lambdaNode.NodejsFunction(this, "GetExhibitionsLambda", {
+            functionName: `crm-${props.envName}-get-exhibitions-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibition-handler.ts"),
-            handler: "exhibitionGetHandler",
+            handler: "exhibitionGetAllHandler",
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
             }
         });
-        this.crmGetExhibitionLambda.addToRolePolicy(
+        this.getExhibitionsLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [

@@ -48,5 +48,6 @@ export class MuseStack extends Stack {
 
         // Outputs
         new cdk.CfnOutput(this, "CrmDistributionUrl", {value: crmWeb.crmDistribution.distributionDomainName});
+        new cdk.CfnOutput(this, "AppDistributionUrl", {value: appWeb.appDistribution.distributionDomainName});
     }
 }

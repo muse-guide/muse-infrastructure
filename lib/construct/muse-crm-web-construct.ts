@@ -79,33 +79,27 @@ export class MuseCrmWebConstruct extends Construct {
         const crmExhibitionEndpoint = crmApiRoot.addResource("exhibitions")
         const crmExhibitionIdEndpoint = crmExhibitionEndpoint.addResource("{id}")
 
-        crmExhibitionIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionLambda), {
+        crmExhibitionEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.createExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.crmGetExhibitionsLambda), {
+        crmExhibitionIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        crmExhibitionEndpoint.addMethod("POST", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmCreateExhibitionStateMachine, {
-            requestTemplates: {"application/json": mappingTemplate(props.backend.crmCreateExhibitionStateMachine.stateMachineArn)}
-        }), {
+        crmExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitionsLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        crmExhibitionIdEndpoint.addMethod("DELETE", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmDeleteExhibitionStateMachine, {
-            requestTemplates: {"application/json": mappingTemplate(props.backend.crmDeleteExhibitionStateMachine.stateMachineArn)}
-        }), {
+        crmExhibitionIdEndpoint.addMethod("DELETE", new apigateway.LambdaIntegration(props.backend.deleteExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        crmExhibitionIdEndpoint.addMethod("PUT", apigateway.StepFunctionsIntegration.startExecution(props.backend.crmUpdateExhibitionStateMachine, {
-            requestTemplates: {"application/json": mappingTemplate(props.backend.crmUpdateExhibitionStateMachine.stateMachineArn)}
-        }), {
+        crmExhibitionIdEndpoint.addMethod("PUT", new apigateway.LambdaIntegration(props.backend.updateExhibitionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
@@ -190,52 +184,5 @@ export class MuseCrmWebConstruct extends Construct {
             sources: [s3Deployment.Source.asset(join(__dirname, "../../../muse-crm-client/build"))],
             distribution: this.crmDistribution
         });
-
-        // Outputs
-        new cdk.CfnOutput(this, "CrmDistributionUrl", {value: this.crmDistribution.distributionDomainName});
     }
 }
-
-const mappingTemplate = (stateMachineArn: string) =>
-    `
-    #set($inputString = '')
-    #set($allParams = $input.params())
-    {
-        "stateMachineArn": "${stateMachineArn}",
-        #set($inputString = "$inputString,@@body@@: $input.body")
-        #set($inputString = "$inputString,@@sub@@: @@$context.authorizer.claims.sub@@")
-        #set($inputString = "$inputString,@@identityId@@: @@$allParams.header.identityid@@")
-       
-        #set($inputString = "$inputString, @@path@@:{")
-        #foreach($paramName in $allParams.path.keySet())
-            #set($inputString = "$inputString @@$paramName@@: @@$util.escapeJavaScript($allParams.path.get($paramName))@@")
-            #if($foreach.hasNext)
-                #set($inputString = "$inputString,")
-            #end
-        #end
-        #set($inputString = "$inputString }")
-            
-        #set($inputString = "$inputString, @@querystring@@:{")
-        #foreach($paramName in $allParams.querystring.keySet())
-            #set($inputString = "$inputString @@$paramName@@: @@$util.escapeJavaScript($allParams.querystring.get($paramName))@@")
-            #if($foreach.hasNext)
-                #set($inputString = "$inputString,")
-            #end
-        #end
-        #set($inputString = "$inputString }")
-            
-        #set($inputString = "$inputString, @@header@@:{")
-        #foreach($paramName in $allParams.header.keySet())
-            #set($inputString = "$inputString @@$paramName@@: @@$util.escapeJavaScript($allParams.header.get($paramName))@@")
-            #if($foreach.hasNext)
-                #set($inputString = "$inputString,")
-            #end
-        #end
-        #set($inputString = "$inputString }")
-        
-        #set($inputString = "$inputString}")
-        #set($inputString = $inputString.replaceAll("@@",'"'))
-        #set($len = $inputString.length() - 1)
-        "input": "{$util.escapeJavaScript($inputString.substring(1,$len)).replaceAll("\\'","'")}"
-    }
-`
