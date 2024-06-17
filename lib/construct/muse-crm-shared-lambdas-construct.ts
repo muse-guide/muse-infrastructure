@@ -18,7 +18,7 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
     public readonly deleteAssetLambda: lambdaNode.NodejsFunction
     public readonly qrCodeGeneratorLambda: lambdaNode.NodejsFunction
     public readonly audioProcessorLambda: lambdaNode.NodejsFunction
-    public readonly cdnManager: lambdaNode.NodejsFunction
+    public readonly cdnManagerLambda: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: MuseCrmCommonLambdasConstructProps) {
         super(scope, id);
@@ -53,6 +53,7 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../muse-crm-server/src/audio-processor.ts"),
+            timeout: cdk.Duration.seconds(180),
             environment: {
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
                 APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName
@@ -101,15 +102,17 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
         props.storage.appAssetBucket.grantDelete(this.deleteAssetLambda);
 
         // CDN manager
-        const cdnArn = 'arn:aws:cloudfront::654493660708:distribution/E3C5VVIK6TDVAL'; // TODO deliver it nicer
-        this.cdnManager = new lambdaNode.NodejsFunction(this, "AppCdnManager", {
+        const distributionId = 'E3C5VVIK6TDVAL'; // TODO deliver it nicer
+        const cdnArn = `arn:aws:cloudfront::654493660708:distribution/${distributionId}`; // TODO deliver it nicer
+        this.cdnManagerLambda = new lambdaNode.NodejsFunction(this, "AppCdnManager", {
             functionName: `crm-${props.envName}-cdn-manager-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../muse-crm-server/src/cdn-manager.ts"),
             environment: {
-                APP_DISTRIBUTION: cdnArn
-            }
+                APP_DISTRIBUTION_ID: distributionId
+            },
+            timeout: cdk.Duration.seconds(120),
         });
 
         const createInvalidationPolicyStatement = new iam.PolicyStatement({
@@ -118,7 +121,7 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             resources: [cdnArn],
         });
 
-        this.cdnManager.role?.attachInlinePolicy(
+        this.cdnManagerLambda.role?.attachInlinePolicy(
             new iam.Policy(this, 'CreateInvalidationPolicy', {
                 statements: [createInvalidationPolicyStatement],
             }),

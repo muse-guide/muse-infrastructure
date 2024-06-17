@@ -15,6 +15,7 @@ export interface DeleteExhibitionConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct,
     readonly deleteAssetLambda: lambdaNode.NodejsFunction,
+    readonly cdnManagerLambda: lambdaNode.NodejsFunction,
 }
 
 export class DeleteExhibitionConstruct extends Construct {
@@ -71,6 +72,24 @@ export class DeleteExhibitionConstruct extends Construct {
                 resultPath: '$.errorInfo',
             })
 
+        const invalidateCacheState = new tasks.LambdaInvoke(this, "UpdateExhibitionInvalidateCacheState",
+            {
+                lambdaFunction: props.cdnManagerLambda,
+                payload: step.TaskInput.fromObject({
+                    paths: step.JsonPath.array(
+                        step.JsonPath.format('/asset/exhibitions/{}/*', step.JsonPath.stringAt('$.entityId')),
+                        step.JsonPath.format('/v1/exhibitions/{}*', step.JsonPath.stringAt('$.entityId')),
+                    )
+                }),
+                outputPath: '$',
+                resultPath: step.JsonPath.DISCARD
+            })
+            .addRetry(retryPolicy)
+            .addCatch(assetProcessingError("UpdateExhibitionInvalidateCacheState", "ERROR"), {
+                errors: ['States.ALL'],
+                resultPath: '$.errorInfo',
+            })
+
         this.deleteExhibitionStateMachine = new step.StateMachine(this, 'DeleteExhibitionStateMachine', {
             stateMachineName: `crm-${props.envName}-delete-exhibition-state-machine`,
             stateMachineType: step.StateMachineType.EXPRESS,
@@ -81,6 +100,7 @@ export class DeleteExhibitionConstruct extends Construct {
             },
             definitionBody: step.DefinitionBody.fromChainable(
                 deleteExhibitionDeleteAssetState
+                    .next(invalidateCacheState)
                     .next(new step.Succeed(this, "Deleted"))
             )
         });

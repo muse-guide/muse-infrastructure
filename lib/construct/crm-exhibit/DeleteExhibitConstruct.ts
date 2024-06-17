@@ -15,6 +15,7 @@ export interface DeleteExhibitConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct,
     readonly deleteAssetLambda: lambdaNode.NodejsFunction,
+    readonly cdnManagerLambda: lambdaNode.NodejsFunction,
 }
 
 export class DeleteExhibitConstruct extends Construct {
@@ -71,6 +72,25 @@ export class DeleteExhibitConstruct extends Construct {
                 resultPath: '$.errorInfo',
             })
 
+        const invalidateCacheState = new tasks.LambdaInvoke(this, "DeleteExhibitInvalidateCacheState",
+            {
+                lambdaFunction: props.cdnManagerLambda,
+                payload: step.TaskInput.fromObject({
+                    paths: step.JsonPath.array(
+                        step.JsonPath.format('/asset/exhibits/{}/*', step.JsonPath.stringAt('$.entityId')),
+                        step.JsonPath.format('/v1/exhibits/{}*', step.JsonPath.stringAt('$.entityId')),
+                        step.JsonPath.format('/v1/exhibitions/{}/exhibits*', step.JsonPath.stringAt('$.entity.exhibitionId')),
+                    )
+                }),
+                outputPath: '$',
+                resultPath: step.JsonPath.DISCARD
+            })
+            .addRetry(retryPolicy)
+            .addCatch(assetProcessingError("DeleteExhibitInvalidateCacheState", "ERROR"), {
+                errors: ['States.ALL'],
+                resultPath: '$.errorInfo',
+            })
+
         this.deleteExhibitStateMachine = new step.StateMachine(this, 'DeleteExhibitStateMachine', {
             stateMachineName: `crm-${props.envName}-delete-exhibit-state-machine`,
             stateMachineType: step.StateMachineType.EXPRESS,
@@ -81,6 +101,7 @@ export class DeleteExhibitConstruct extends Construct {
             },
             definitionBody: step.DefinitionBody.fromChainable(
                 deleteExhibitDeleteAssetState
+                    .next(invalidateCacheState)
                     .next(new step.Succeed(this, "Deleted"))
             )
         });

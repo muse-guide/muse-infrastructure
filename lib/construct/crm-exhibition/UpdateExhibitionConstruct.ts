@@ -17,6 +17,7 @@ export interface UpdateExhibitionConstructProps extends cdk.StackProps {
     readonly imageProcessorLambda: lambdaNode.NodejsFunction,
     readonly audioProcessorLambda: lambdaNode.NodejsFunction,
     readonly deleteAssetLambda: lambdaNode.NodejsFunction,
+    readonly cdnManagerLambda: lambdaNode.NodejsFunction,
 }
 export class UpdateExhibitionConstruct extends Construct {
 
@@ -144,6 +145,24 @@ export class UpdateExhibitionConstruct extends Construct {
             'ParallelUpdateExhibition'
         );
 
+        const invalidateCacheState = new tasks.LambdaInvoke(this, "UpdateExhibitionInvalidateCacheState",
+            {
+                lambdaFunction: props.cdnManagerLambda,
+                payload: step.TaskInput.fromObject({
+                    paths: step.JsonPath.array(
+                        step.JsonPath.format('/asset/exhibitions/{}/*', step.JsonPath.stringAt('$[0].entityId')),
+                        step.JsonPath.format('/v1/exhibitions/{}*', step.JsonPath.stringAt('$[0].entityId')),
+                    )
+                }),
+                outputPath: '$',
+                resultPath: step.JsonPath.DISCARD
+            })
+            .addRetry(retryPolicy)
+            .addCatch(assetProcessingError("UpdateExhibitionInvalidateCacheState"), {
+                errors: ['States.ALL'],
+                resultPath: '$.errorInfo',
+            })
+
         parallelUpdateExhibition.branch(updateExhibitionChoiceProcessImagesState);
         parallelUpdateExhibition.branch(updateExhibitionChoiceProcessAudioState);
         parallelUpdateExhibition.branch(updateExhibitionChoiceDeleteAssetState);
@@ -158,6 +177,7 @@ export class UpdateExhibitionConstruct extends Construct {
             },
             definitionBody: step.DefinitionBody.fromChainable(
                 parallelUpdateExhibition
+                    .next(invalidateCacheState)
                     .next(setExhibitionUpdated)
                     .next(new step.Succeed(this, "Updated"))
             )

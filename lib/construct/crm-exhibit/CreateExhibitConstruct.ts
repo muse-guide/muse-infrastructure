@@ -17,6 +17,7 @@ export interface CreateExhibitConstructProps extends cdk.StackProps {
     readonly imageProcessorLambda: lambdaNode.NodejsFunction,
     readonly qrCodeGeneratorLambda: lambdaNode.NodejsFunction,
     readonly audioProcessorLambda: lambdaNode.NodejsFunction,
+    readonly cdnManagerLambda: lambdaNode.NodejsFunction,
 }
 
 export class CreateExhibitConstruct extends Construct {
@@ -132,6 +133,23 @@ export class CreateExhibitConstruct extends Construct {
             resultPath: step.JsonPath.DISCARD
         });
 
+        const invalidateCacheState = new tasks.LambdaInvoke(this, "CreateExhibitInvalidateCacheState",
+            {
+                lambdaFunction: props.cdnManagerLambda,
+                payload: step.TaskInput.fromObject({
+                    paths: step.JsonPath.array(
+                        step.JsonPath.format('/v1/exhibitions/{}/exhibits*', step.JsonPath.stringAt('$[0].entity.exhibitionId')),
+                    )
+                }),
+                outputPath: '$',
+                resultPath: step.JsonPath.DISCARD
+            })
+            .addRetry(retryPolicy)
+            .addCatch(assetProcessingError("CreateExhibitInvalidateCacheState"), {
+                errors: ['States.ALL'],
+                resultPath: '$.errorInfo',
+            })
+
         const parallelCreateExhibit = new step.Parallel(
             this,
             'ParallelCreateExhibit'
@@ -151,6 +169,7 @@ export class CreateExhibitConstruct extends Construct {
             },
             definitionBody: step.DefinitionBody.fromChainable(
                 parallelCreateExhibit
+                    .next(invalidateCacheState)
                     .next(setExhibitCreated)
                     .next(new step.Succeed(this, "Created"))
             )

@@ -17,6 +17,7 @@ export interface UpdateExhibitConstructProps extends cdk.StackProps {
     readonly imageProcessorLambda: lambdaNode.NodejsFunction,
     readonly audioProcessorLambda: lambdaNode.NodejsFunction,
     readonly deleteAssetLambda: lambdaNode.NodejsFunction,
+    readonly cdnManagerLambda: lambdaNode.NodejsFunction,
 }
 
 export class UpdateExhibitConstruct extends Construct {
@@ -145,6 +146,25 @@ export class UpdateExhibitConstruct extends Construct {
             'ParallelUpdateExhibit'
         );
 
+        const invalidateCacheState = new tasks.LambdaInvoke(this, "UpdateExhibitInvalidateCacheState",
+            {
+                lambdaFunction: props.cdnManagerLambda,
+                payload: step.TaskInput.fromObject({
+                    paths: step.JsonPath.array(
+                        step.JsonPath.format('/asset/exhibit/{}/*', step.JsonPath.stringAt('$[0].entityId')),
+                        step.JsonPath.format('/v1/exhibits/{}*', step.JsonPath.stringAt('$[0].entityId')),
+                        step.JsonPath.format('/v1/exhibitions/{}/exhibits*', step.JsonPath.stringAt('$[0].entity.exhibitionId')),
+                    )
+                }),
+                outputPath: '$',
+                resultPath: step.JsonPath.DISCARD
+            })
+            .addRetry(retryPolicy)
+            .addCatch(assetProcessingError("UpdateExhibitInvalidateCacheState"), {
+                errors: ['States.ALL'],
+                resultPath: '$.errorInfo',
+            })
+
         parallelUpdateExhibit.branch(updateExhibitChoiceProcessImagesState);
         parallelUpdateExhibit.branch(updateExhibitChoiceProcessAudioState);
         parallelUpdateExhibit.branch(updateExhibitChoiceDeleteAssetState);
@@ -159,6 +179,7 @@ export class UpdateExhibitConstruct extends Construct {
             },
             definitionBody: step.DefinitionBody.fromChainable(
                 parallelUpdateExhibit
+                    .next(invalidateCacheState)
                     .next(setExhibitUpdated)
                     .next(new step.Succeed(this, "Updated"))
             )

@@ -46,35 +46,41 @@ export class MuseAppWebConstruct extends Construct {
         const appApiRoot = appApiGateway.api.root.addResource("v1");
 
         // Exhibition resources
-        const appExhibitionEndpoint = appApiRoot
-            .addResource("exhibitions")
-            .addResource("{id}")
+        const appExhibitionEndpoint = appApiRoot.addResource("exhibitions")
+        const appExhibitionIdEndpoint   =  appExhibitionEndpoint.addResource("{id}")
+        const appExhibitionExhibitsEndpoint   =  appExhibitionIdEndpoint.addResource("exhibits")
 
-        appExhibitionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitionPreviewLambda));
+        appExhibitionIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitionPreviewLambda));
+        appExhibitionExhibitsEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitPreviewsLambda));
 
         // Exhibit resources
         const appExhibitEndpoint = appApiRoot.addResource("exhibits")
         const appExhibitIdEndpoint = appExhibitEndpoint.addResource("{id}")
 
-        appExhibitEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitPreviewsLambda));
-
         appExhibitIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitPreviewLambda));
 
         // Add Distribution to front API GW, mobile app and asset S3 bucket
+        const allowedQueryStrings = ["lang", "page-size", "next-page-key", "number"];
+
         this.appDistribution = new cloudfront.Distribution(this, "AppDistribution", {
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
             defaultRootObject: "index.html",
             defaultBehavior: {
                 origin: new origins.S3Origin(appUiBucket, {originAccessIdentity: appUiOriginAccessIdentity}),
                 viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                cachePolicy: new cloudfront.CachePolicy(this, 'AppCacheAppPolicy', {
+                    defaultTtl: cdk.Duration.days(30),
+                    cookieBehavior: cloudfront.OriginRequestCookieBehavior.none(),
+                    queryStringBehavior: cloudfront.CacheQueryStringBehavior.none()
+                }),
             },
             errorResponses: [
                 {
                     httpStatus: 404,
                     responseHttpStatus: 200,
                     responsePagePath: "/index.html",
-                    ttl: cdk.Duration.seconds(0)
-                }
+                    ttl: cdk.Duration.days(30)
+                },
             ],
             additionalBehaviors: {
                 "v1/*": {
@@ -85,21 +91,24 @@ export class MuseAppWebConstruct extends Construct {
                     }),
                     allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
                     viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // TODO enable caching
+                    cachePolicy: new cloudfront.CachePolicy(this, 'AppCacheBackendPolicy', {
+                        defaultTtl: cdk.Duration.days(30),
+                        cookieBehavior: cloudfront.OriginRequestCookieBehavior.none(),
+                        queryStringBehavior: cloudfront.CacheQueryStringBehavior.allowList(...allowedQueryStrings)
+                    }),
                     originRequestPolicy: new cloudfront.OriginRequestPolicy(this, 'AppOriginRequestPolicy', {
                         cookieBehavior: cloudfront.OriginRequestCookieBehavior.none(),
-                        queryStringBehavior: cloudfront.OriginRequestQueryStringBehavior.allowList(
-                            'lang',
-                            'exhibition-id',
-                            'page-size',
-                            'next-page-key',
-                            'number'
-                        ),
+                        queryStringBehavior: cloudfront.OriginRequestQueryStringBehavior.allowList(...allowedQueryStrings),
                     })
                 },
                 "asset/*": {
                     origin: new origins.S3Origin(props.storage.appAssetBucket, {originAccessIdentity: props.storage.appAssetBucketOai}),
-                    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
+                    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    cachePolicy: new cloudfront.CachePolicy(this, 'AppCacheAssetPolicy', {
+                        defaultTtl: cdk.Duration.days(30),
+                        cookieBehavior: cloudfront.OriginRequestCookieBehavior.none(),
+                        queryStringBehavior: cloudfront.CacheQueryStringBehavior.none()
+                    }),
                 }
             }
         });

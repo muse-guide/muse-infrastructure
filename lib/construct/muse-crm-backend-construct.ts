@@ -80,6 +80,7 @@ export class MuseCrmBackendConstruct extends Construct {
             envName: props.envName,
             storage: props.storage,
             deleteAssetLambda: sharedLambdas.deleteAssetLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
         });
 
         this.deleteExhibitionLambda = deleteExhibitionConstruct.deleteExhibitionLambda
@@ -90,7 +91,8 @@ export class MuseCrmBackendConstruct extends Construct {
             storage: props.storage,
             imageProcessorLambda: sharedLambdas.imageProcessorLambda,
             audioProcessorLambda: sharedLambdas.audioProcessorLambda,
-            deleteAssetLambda: sharedLambdas.deleteAssetLambda
+            deleteAssetLambda: sharedLambdas.deleteAssetLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
         });
 
         this.updateExhibitionLambda = updateExhibitionConstruct.updateExhibitionLambda
@@ -101,7 +103,8 @@ export class MuseCrmBackendConstruct extends Construct {
             storage: props.storage,
             imageProcessorLambda: sharedLambdas.imageProcessorLambda,
             qrCodeGeneratorLambda: sharedLambdas.qrCodeGeneratorLambda,
-            audioProcessorLambda: sharedLambdas.audioProcessorLambda
+            audioProcessorLambda: sharedLambdas.audioProcessorLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
         });
 
         this.createExhibitLambda = createExhibitConstruct.createExhibitLambda
@@ -127,6 +130,7 @@ export class MuseCrmBackendConstruct extends Construct {
             envName: props.envName,
             storage: props.storage,
             deleteAssetLambda: sharedLambdas.deleteAssetLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
         });
 
         this.deleteExhibitLambda = deleteExhibitConstruct.deleteExhibitLambda
@@ -137,7 +141,8 @@ export class MuseCrmBackendConstruct extends Construct {
             storage: props.storage,
             imageProcessorLambda: sharedLambdas.imageProcessorLambda,
             audioProcessorLambda: sharedLambdas.audioProcessorLambda,
-            deleteAssetLambda: sharedLambdas.deleteAssetLambda
+            deleteAssetLambda: sharedLambdas.deleteAssetLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
         });
 
         this.updateExhibitLambda = updateExhibitConstruct.updateExhibitLambda
