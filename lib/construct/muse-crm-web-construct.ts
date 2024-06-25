@@ -8,10 +8,10 @@ import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as awss3 from "aws-cdk-lib/aws-s3";
 import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
-import {CognitoConstruct} from "../common/cognito-construct";
 import {MuseCrmBackendConstruct} from "./muse-crm-backend-construct";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
 import * as iam from "aws-cdk-lib/aws-iam";
+import {CognitoConstruct} from "./crm-exhibition/CognitoConstruct";
 
 export interface MuseCrmWebConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -41,7 +41,8 @@ export class MuseCrmWebConstruct extends Construct {
         // Cognito user pool
         const crmCognito = new CognitoConstruct(this, "CrmCognito", {
             envName: props.envName,
-            application: "crm"
+            application: "crm",
+            storage: props.storage
         });
 
         const customerAssetUrl = "arn:aws:s3:::" + props.storage.crmAssetBucket.bucketName + "/private/${cognito-identity.amazonaws.com:sub}/*"
