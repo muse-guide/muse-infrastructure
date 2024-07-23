@@ -27,7 +27,7 @@ export class CognitoConstruct extends Construct {
             userPoolName: `${props.application}-${props.envName}-cognito-user-pool`,
             signInAliases: {email: true, username: false},
             selfSignUpEnabled: true,
-            removalPolicy: RemovalPolicy.DESTROY
+            removalPolicy: RemovalPolicy.DESTROY,
         });
 
         const appClient = this.userPool.addClient("AppClient", {
@@ -72,7 +72,7 @@ export class CognitoConstruct extends Construct {
             }
         );
 
-        // Get Exhibition lambda
+        // Create Customer lambda
         this.createCustomerLambda = new lambdaNode.NodejsFunction(this, "CreateCustomerLambda", {
             functionName: `crm-${props.envName}-create-customer-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,

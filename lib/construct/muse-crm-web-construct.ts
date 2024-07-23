@@ -11,7 +11,7 @@ import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
 import {MuseCrmBackendConstruct} from "./muse-crm-backend-construct";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
 import * as iam from "aws-cdk-lib/aws-iam";
-import {CognitoConstruct} from "./crm-exhibition/CognitoConstruct";
+import {CognitoConstruct} from "./crm-customer/CognitoConstruct";
 
 export interface MuseCrmWebConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -75,6 +75,29 @@ export class MuseCrmWebConstruct extends Construct {
         });
 
         const crmApiRoot = crmApiGateway.api.root.addResource("v1");
+
+        // Configuration resources
+        const crmConfigurationEndpoint = crmApiRoot.addResource("configuration")
+
+        crmConfigurationEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getConfigurationLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        // Customer resources
+        const crmCustomerEndpoint = crmApiRoot.addResource("customers")
+        const crmCurrentCustomerEndpoint = crmCustomerEndpoint.addResource("current")
+        const crmChangeSubscriptionEndpoint = crmCustomerEndpoint.addResource("subscriptions")
+
+        crmCurrentCustomerEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getCustomerLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmChangeSubscriptionEndpoint.addMethod("PUT", new apigateway.LambdaIntegration(props.backend.updateSubscriptionLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
 
         // Exhibition resources
         const crmExhibitionEndpoint = crmApiRoot.addResource("exhibitions")

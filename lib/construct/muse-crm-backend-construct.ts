@@ -14,6 +14,9 @@ import {GetExhibitionConstruct} from "./crm-exhibition/GetExhibtionConstruct";
 import {GetExhibitionsConstruct} from "./crm-exhibition/GetExhibtionsConstruct";
 import {DeleteExhibitionConstruct} from "./crm-exhibition/DeleteExhibitionConstruct";
 import {UpdateExhibitionConstruct} from "./crm-exhibition/UpdateExhibitionConstruct";
+import {GetCustomerConstruct} from "./crm-customer/GetCustomerConstruct";
+import {UpdateSubscriptionConstruct} from "./crm-customer/UpdateSubscriptionConstruct";
+import {GetConfigurationConstruct} from "./crm-configuration/GetConfigurationConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -21,6 +24,13 @@ export interface MuseCrmBackendConstructProps extends cdk.StackProps {
 }
 
 export class MuseCrmBackendConstruct extends Construct {
+
+    // Configuration
+    public readonly getConfigurationLambda: lambdaNode.NodejsFunction
+
+    // Customer
+    public readonly getCustomerLambda: lambdaNode.NodejsFunction
+    public readonly updateSubscriptionLambda: lambdaNode.NodejsFunction
 
     // Exhibition
     public readonly createExhibitionLambda: lambdaNode.NodejsFunction
@@ -47,6 +57,30 @@ export class MuseCrmBackendConstruct extends Construct {
             envName: props.envName,
             storage: props.storage
         });
+
+        // Get Configuration Construct
+        const getConfigurationConstruct = new GetConfigurationConstruct(this, 'GetConfigurationConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getConfigurationLambda = getConfigurationConstruct.getConfigurationLambda
+
+        // Get Customer Construct
+        const getCustomerConstruct = new GetCustomerConstruct(this, 'GetCustomerConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getCustomerLambda = getCustomerConstruct.getCustomerLambda
+
+        // Change Customer Subscription Construct
+        const updateSubscriptionConstruct = new UpdateSubscriptionConstruct(this, 'UpdateSubscriptionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.updateSubscriptionLambda = updateSubscriptionConstruct.updateSubscriptionLambda
 
         // Create Exhibition Construct
         const createExhibitionConstruct = new CreateExhibitionConstruct(this, 'CreateExhibitionConstruct', {

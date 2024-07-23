@@ -171,7 +171,10 @@ export class CreateExhibitionConstruct extends Construct {
         this.createExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.storage.crmResourceTable.tableArn]
+                resources: [
+                    props.storage.crmResourceTable.tableArn,
+                    `${props.storage.crmResourceTable.tableArn}/index/*`
+                ]
             })
         );
         this.createExhibitionLambda.addToRolePolicy(
