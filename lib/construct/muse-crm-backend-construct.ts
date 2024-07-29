@@ -17,6 +17,7 @@ import {UpdateExhibitionConstruct} from "./crm-exhibition/UpdateExhibitionConstr
 import {GetCustomerConstruct} from "./crm-customer/GetCustomerConstruct";
 import {UpdateSubscriptionConstruct} from "./crm-customer/UpdateSubscriptionConstruct";
 import {GetConfigurationConstruct} from "./crm-configuration/GetConfigurationConstruct";
+import {UpdateCustomerDetailsConstruct} from "./crm-customer/UpdateCustomerDetailsConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -31,6 +32,7 @@ export class MuseCrmBackendConstruct extends Construct {
     // Customer
     public readonly getCustomerLambda: lambdaNode.NodejsFunction
     public readonly updateSubscriptionLambda: lambdaNode.NodejsFunction
+    public readonly updateCustomerDetailsLambda: lambdaNode.NodejsFunction
 
     // Exhibition
     public readonly createExhibitionLambda: lambdaNode.NodejsFunction
@@ -81,6 +83,14 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.updateSubscriptionLambda = updateSubscriptionConstruct.updateSubscriptionLambda
+
+        // Update Customer Details Construct
+        const updateCustomerDetailsConstruct = new UpdateCustomerDetailsConstruct(this, 'UpdateCustomerDetailsConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.updateCustomerDetailsLambda = updateCustomerDetailsConstruct.updateCustomerDetailsLambda
 
         // Create Exhibition Construct
         const createExhibitionConstruct = new CreateExhibitionConstruct(this, 'CreateExhibitionConstruct', {

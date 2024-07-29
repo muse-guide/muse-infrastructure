@@ -87,9 +87,15 @@ export class MuseCrmWebConstruct extends Construct {
         // Customer resources
         const crmCustomerEndpoint = crmApiRoot.addResource("customers")
         const crmCurrentCustomerEndpoint = crmCustomerEndpoint.addResource("current")
+        const crmUpdateCustomerDetailsEndpoint = crmCustomerEndpoint.addResource("details")
         const crmChangeSubscriptionEndpoint = crmCustomerEndpoint.addResource("subscriptions")
 
         crmCurrentCustomerEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getCustomerLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmUpdateCustomerDetailsEndpoint.addMethod("PUT", new apigateway.LambdaIntegration(props.backend.updateCustomerDetailsLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
