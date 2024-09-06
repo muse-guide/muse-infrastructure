@@ -45,8 +45,8 @@ export class ApiGatewayConstruct extends Construct {
         const plan = this.api.addUsagePlan(`${appCapitalized}UsagePlan`, {
             name: `${props.application}-${props.envName}-usage-plan`,
             throttle: {
-                rateLimit: props.throttle?.rateLimit ?? 1,
-                burstLimit: props.throttle?.burstLimit ?? 2
+                rateLimit: props.throttle?.rateLimit ?? 2,
+                burstLimit: props.throttle?.burstLimit ?? 4
             }
         });
 

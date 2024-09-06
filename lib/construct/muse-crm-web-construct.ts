@@ -105,6 +105,20 @@ export class MuseCrmWebConstruct extends Construct {
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
+        // Invoices resources
+        const crmInvoicesEndpoint = crmApiRoot.addResource("invoices")
+        const crmInvoiceEndpoint = crmInvoicesEndpoint.addResource("{id}")
+
+        crmInvoicesEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getInvoicesLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmInvoiceEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getInvoiceLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
         // Exhibition resources
         const crmExhibitionEndpoint = crmApiRoot.addResource("exhibitions")
         const crmExhibitionIdEndpoint = crmExhibitionEndpoint.addResource("{id}")

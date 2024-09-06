@@ -18,6 +18,9 @@ import {GetCustomerConstruct} from "./crm-customer/GetCustomerConstruct";
 import {UpdateSubscriptionConstruct} from "./crm-customer/UpdateSubscriptionConstruct";
 import {GetConfigurationConstruct} from "./crm-configuration/GetConfigurationConstruct";
 import {UpdateCustomerDetailsConstruct} from "./crm-customer/UpdateCustomerDetailsConstruct";
+import {IssueInvoicesConstruct} from "./crm-invoice/IssueInvoicesConstruct";
+import {GetInvoicesConstruct} from "./crm-invoice/GetInvoicesConstruct";
+import {GetInvoiceConstruct} from "./crm-invoice/GetInvoiceConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -33,6 +36,10 @@ export class MuseCrmBackendConstruct extends Construct {
     public readonly getCustomerLambda: lambdaNode.NodejsFunction
     public readonly updateSubscriptionLambda: lambdaNode.NodejsFunction
     public readonly updateCustomerDetailsLambda: lambdaNode.NodejsFunction
+
+    // Invoices
+    public readonly getInvoicesLambda: lambdaNode.NodejsFunction
+    public readonly getInvoiceLambda: lambdaNode.NodejsFunction
 
     // Exhibition
     public readonly createExhibitionLambda: lambdaNode.NodejsFunction
@@ -50,6 +57,7 @@ export class MuseCrmBackendConstruct extends Construct {
 
     // Audio
     public readonly generateAudioPreviewLambda: lambdaNode.NodejsFunction
+
 
     constructor(scope: Construct, id: string, props: MuseCrmBackendConstructProps) {
         super(scope, id);
@@ -198,5 +206,27 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.generateAudioPreviewLambda = generateAudioPreviewConstruct.audioPreviewLambda
+
+        // Issue invoices construct
+        const issueInvoicesConstruct = new IssueInvoicesConstruct(this, 'IssueInvoicesConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        // Get customer invoices
+        const getInvoicesConstruct = new GetInvoicesConstruct(this, 'GetInvoicesConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getInvoicesLambda = getInvoicesConstruct.getInvoicesLambda
+
+        // Get invoice
+        const getInvoiceConstruct = new GetInvoiceConstruct(this, 'GetInvoiceConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getInvoiceLambda = getInvoiceConstruct.getInvoiceLambda
     }
 }
