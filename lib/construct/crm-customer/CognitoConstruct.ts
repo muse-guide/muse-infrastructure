@@ -86,7 +86,10 @@ export class CognitoConstruct extends Construct {
         this.createCustomerLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
-                resources: [props.storage.crmResourceTable.tableArn]
+                resources: [
+                    props.storage.crmResourceTable.tableArn,
+                    `${props.storage.crmResourceTable.tableArn}/index/*`
+                ]
             })
         );
 

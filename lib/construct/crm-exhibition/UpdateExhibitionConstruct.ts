@@ -192,6 +192,7 @@ export class UpdateExhibitionConstruct extends Construct {
             handler: "exhibitionUpdateHandler",
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
+                CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
                 UPDATE_EXHIBITION_STEP_FUNCTION_ARN: this.updateExhibitionStateMachine.stateMachineArn,
             }
         });

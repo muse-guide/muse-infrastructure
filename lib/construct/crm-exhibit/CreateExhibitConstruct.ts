@@ -184,6 +184,7 @@ export class CreateExhibitConstruct extends Construct {
             handler: "exhibitCreateHandler",
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
+                CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
                 CREATE_EXHIBIT_STEP_FUNCTION_ARN: this.createExhibitStateMachine.stateMachineArn,
             }
         });

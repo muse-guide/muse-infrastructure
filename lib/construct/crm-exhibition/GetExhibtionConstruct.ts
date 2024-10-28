@@ -26,9 +26,12 @@ export class GetExhibitionConstruct extends Construct {
             entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibition-handler.ts"),
             handler: "exhibitionGetHandler",
             environment: {
-                RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
+                RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
+                CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
             }
         });
+        props.storage.crmAssetBucket.grantRead(this.getExhibitionLambda);
+
         this.getExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions

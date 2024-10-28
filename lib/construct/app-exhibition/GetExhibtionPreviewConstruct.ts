@@ -26,6 +26,7 @@ export class GetExhibitionPreviewConstruct extends Construct {
             entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibition-preview-handler.ts"),
             handler: "exhibitionPreviewGetHandler",
             environment: {
+                APP_DOMAIN: "https://duz68kh4juaad.cloudfront.net",
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
             }
         });
