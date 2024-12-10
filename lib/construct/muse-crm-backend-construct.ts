@@ -8,7 +8,7 @@ import {GetExhibitConstruct} from "./crm-exhibit/GetExhibtConstruct";
 import {GetExhibitsConstruct} from "./crm-exhibit/GetExhibtsConstruct";
 import {DeleteExhibitConstruct} from "./crm-exhibit/DeleteExhibitConstruct";
 import {UpdateExhibitConstruct} from "./crm-exhibit/UpdateExhibitConstruct";
-import {AudioPreviewConstruct} from "./crm-audio/AudioPreviewConstruct";
+import {AudioPreviewConstruct} from "./crm-asset/AudioPreviewConstruct";
 import {CreateExhibitionConstruct} from "./crm-exhibition/CreateExhibitionConstruct";
 import {GetExhibitionConstruct} from "./crm-exhibition/GetExhibtionConstruct";
 import {GetExhibitionsConstruct} from "./crm-exhibition/GetExhibtionsConstruct";
@@ -21,6 +21,8 @@ import {UpdateCustomerDetailsConstruct} from "./crm-customer/UpdateCustomerDetai
 import {IssueInvoicesConstruct} from "./crm-invoice/IssueInvoicesConstruct";
 import {GetInvoicesConstruct} from "./crm-invoice/GetInvoicesConstruct";
 import {GetInvoiceConstruct} from "./crm-invoice/GetInvoiceConstruct";
+import {GetPreSignedUrlConstruct} from "./crm-asset/GetPreSignedUrlConstruct";
+import {PutPreSignedUrlConstruct} from "./crm-asset/PutPreSignedUrlConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -55,9 +57,10 @@ export class MuseCrmBackendConstruct extends Construct {
     public readonly deleteExhibitLambda: lambdaNode.NodejsFunction
     public readonly updateExhibitLambda: lambdaNode.NodejsFunction
 
-    // Audio
+    // Asset
     public readonly generateAudioPreviewLambda: lambdaNode.NodejsFunction
-
+    public readonly generateGetPreSignedUrlLambda: lambdaNode.NodejsFunction
+    public readonly generatePutPreSignedUrlLambda: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: MuseCrmBackendConstructProps) {
         super(scope, id);
@@ -206,6 +209,22 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.generateAudioPreviewLambda = generateAudioPreviewConstruct.audioPreviewLambda
+
+        // Generate GET Pre Signed Url Construct
+        const generateGetPreSignedUrlConstruct = new GetPreSignedUrlConstruct(this, 'GetPreSignedUrlConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.generateGetPreSignedUrlLambda = generateGetPreSignedUrlConstruct.getPreSignedUrlLambda
+
+        // Generate PUT Pre Signed Url Construct
+        const generatePutPreSignedUrlConstruct = new PutPreSignedUrlConstruct(this, 'PutPreSignedUrlConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.generatePutPreSignedUrlLambda = generatePutPreSignedUrlConstruct.putPreSignedUrlLambda
 
         // Issue invoices construct
         const issueInvoicesConstruct = new IssueInvoicesConstruct(this, 'IssueInvoicesConstruct', {

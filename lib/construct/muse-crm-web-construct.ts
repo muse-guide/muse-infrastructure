@@ -177,10 +177,25 @@ export class MuseCrmWebConstruct extends Construct {
             authorizationType: apigateway.AuthorizationType.COGNITO
         });
 
-        // Audio resources
-        const crmAudioEndpoint = crmApiRoot.addResource("audio")
+        // Asset resources
+        const crmAssetEndpoint = crmApiRoot.addResource("assets")
+        const crmAudioEndpoint = crmAssetEndpoint.addResource("audio")
 
         crmAudioEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.generateAudioPreviewLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        const crmGetPreSignedUrlEndpoint = crmAssetEndpoint.addResource("get-presigned-url")
+
+        crmGetPreSignedUrlEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.generateGetPreSignedUrlLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        const crmPutPreSignedUrlEndpoint = crmAssetEndpoint.addResource("put-presigned-url")
+
+        crmPutPreSignedUrlEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.generatePutPreSignedUrlLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });

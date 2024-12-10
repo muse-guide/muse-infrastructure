@@ -79,6 +79,7 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../muse-crm-server/src/qr-code-generator.ts"),
+            timeout: cdk.Duration.seconds(180),
             environment: {
                 APP_DOMAIN: "https://duz68kh4juaad.cloudfront.net",
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName
