@@ -45,23 +45,6 @@ export class MuseCrmWebConstruct extends Construct {
             storage: props.storage
         });
 
-        const customerAssetUrl = "arn:aws:s3:::" + props.storage.crmAssetBucket.bucketName + "/private/${cognito-identity.amazonaws.com:sub}/*"
-        const tmpAssetUrl = "arn:aws:s3:::" + props.storage.crmAssetBucket.bucketName + "/public/tmp/*"
-        crmCognito.authenticatedRole.addToPolicy(
-            new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                actions: [
-                    "s3:PutObject",
-                    "s3:GetObject",
-                    "s3:DeleteObject"
-                ],
-                resources: [
-                    customerAssetUrl,
-                    tmpAssetUrl
-                ],
-            })
-        )
-
         // API Gateway definition
         const crmApiGateway = new ApiGatewayConstruct(this, "CrmApiGateway", {
                 envName: props.envName,

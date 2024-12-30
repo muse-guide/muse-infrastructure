@@ -79,7 +79,9 @@ export class MuseCrmStorageConstruct extends Construct {
 
         this.crmAssetBucket.addLifecycleRule({
             expiration: cdk.Duration.days(1),
-            prefix: 'public/tmp',
+            tagFilters: {
+                "temp": "true"
+            }
         })
 
         // Public asset bucket

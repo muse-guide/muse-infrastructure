@@ -16,8 +16,6 @@ export interface CognitoConstructProps {
 export class CognitoConstruct extends Construct {
 
     readonly userPool: cognito.UserPool;
-    readonly identityPool: cognito.CfnIdentityPool;
-    readonly authenticatedRole: iam.Role;
     readonly createCustomerLambda: lambdaNode.NodejsFunction
 
     constructor(scope: Construct, id: string, props: CognitoConstructProps) {
@@ -36,41 +34,7 @@ export class CognitoConstruct extends Construct {
                 userSrp: true,
                 adminUserPassword: true
             }
-        });
-
-        this.identityPool = new cognito.CfnIdentityPool(this, "IdentityPool", {
-            allowUnauthenticatedIdentities: false, // Don't allow unathenticated users
-            cognitoIdentityProviders: [
-                {
-                    clientId: appClient.userPoolClientId,
-                    providerName: this.userPool.userPoolProviderName,
-                },
-            ],
-        });
-
-        this.authenticatedRole = new iam.Role(this, "CognitoDefaultAuthenticatedRole", {
-            assumedBy: new iam.FederatedPrincipal(
-                "cognito-identity.amazonaws.com",
-                {
-                    StringEquals: {
-                        "cognito-identity.amazonaws.com:aud": this.identityPool.ref,
-                    },
-                    "ForAnyValue:StringLike": {
-                        "cognito-identity.amazonaws.com:amr": "authenticated",
-                    },
-                },
-                "sts:AssumeRoleWithWebIdentity"
-            ),
-        });
-
-        new cognito.CfnIdentityPoolRoleAttachment(
-            this,
-            "IdentityPoolRoleAttachment",
-            {
-                identityPoolId: this.identityPool.ref,
-                roles: {authenticated: this.authenticatedRole.roleArn},
-            }
-        );
+        })
 
         // Create Customer lambda
         this.createCustomerLambda = new lambdaNode.NodejsFunction(this, "CreateCustomerLambda", {
