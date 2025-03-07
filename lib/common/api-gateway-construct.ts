@@ -1,6 +1,5 @@
 import {Construct} from "constructs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import {nanoid} from 'nanoid';
 
 export interface ApiGatewayConstructProps {
     envName: string,

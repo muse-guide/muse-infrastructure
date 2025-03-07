@@ -11,7 +11,7 @@ import {Effect} from "aws-cdk-lib/aws-iam";
 import {LogGroup, RetentionDays} from "aws-cdk-lib/aws-logs";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
 
-export interface UpdateExhibitionConstructProps extends cdk.StackProps {
+export interface UpdateInstitutionConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct,
     readonly imageProcessorLambda: lambdaNode.NodejsFunction,
@@ -19,19 +19,19 @@ export interface UpdateExhibitionConstructProps extends cdk.StackProps {
     readonly deleteAssetLambda: lambdaNode.NodejsFunction,
     readonly cdnManagerLambda: lambdaNode.NodejsFunction,
 }
-export class UpdateExhibitionConstruct extends Construct {
+export class UpdateInstitutionConstruct extends Construct {
 
-    public readonly updateExhibitionLambda: lambdaNode.NodejsFunction
-    public readonly updateExhibitionStateMachine: step.StateMachine
+    public readonly updateInstitutionLambda: lambdaNode.NodejsFunction
+    public readonly updateInstitutionStateMachine: step.StateMachine
 
-    constructor(scope: Construct, id: string, props: UpdateExhibitionConstructProps) {
+    constructor(scope: Construct, id: string, props: UpdateInstitutionConstructProps) {
         super(scope, id);
 
         const assetProcessingError = (id: string) => {
             return new tasks.DynamoUpdateItem(this, `ProcessingError-${id}`, {
                 key: {
                     pk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$muse#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                    sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$exhibition_1#id_{}', step.JsonPath.stringAt('$.entityId'))),
+                    sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$institution_1#id_{}', step.JsonPath.stringAt('$.entityId'))),
                 },
                 expressionAttributeNames: {
                     '#S': "status"
@@ -45,22 +45,22 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
                 .addRetry(retryPolicy)
-                .next(new step.Fail(this, `UpdateExhibitionFail-${id}`))
+                .next(new step.Fail(this, `UpdateInstitutionFail-${id}`))
         }
 
-        // Update Exhibition Step Function
+        // Update Institution Step Function
         const retryPolicy: cdk.aws_stepfunctions.RetryProps = {
             maxAttempts: 3,
             backoffRate: 2,
             interval: Duration.seconds(1)
         }
 
-        const updateExhibitionLogGroup = new LogGroup(this, 'UpdateExhibitionLogGroup', {
+        const updateInstitutionLogGroup = new LogGroup(this, 'UpdateInstitutionLogGroup', {
             retention: RetentionDays.ONE_DAY,
             removalPolicy: RemovalPolicy.DESTROY,
         });
 
-        const updateExhibitionProcessImagesState = new tasks.LambdaInvoke(this, "UpdateExhibitionProcessImagesState",
+        const updateInstitutionProcessImagesState = new tasks.LambdaInvoke(this, "UpdateInstitutionProcessImagesState",
             {
                 lambdaFunction: props.imageProcessorLambda,
                 inputPath: '$.asset.images',
@@ -68,20 +68,20 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionProcessImagesState"), {
+            .addCatch(assetProcessingError("UpdateInstitutionProcessImagesState"), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
 
-        const updateExhibitionSkipProcessImagesState = new step.Pass(this, 'UpdateExhibitionSkipProcessImagesState');
-        const updateExhibitionChoiceProcessImagesState = new step.Choice(this, 'UpdateExhibitionChoiceProcessImagesState')
+        const updateInstitutionSkipProcessImagesState = new step.Pass(this, 'UpdateInstitutionSkipProcessImagesState');
+        const updateInstitutionChoiceProcessImagesState = new step.Choice(this, 'UpdateInstitutionChoiceProcessImagesState')
             .when(
                 step.Condition.isPresent('$.asset.images'),
-                updateExhibitionProcessImagesState
+                updateInstitutionProcessImagesState
             )
-            .otherwise(updateExhibitionSkipProcessImagesState)
+            .otherwise(updateInstitutionSkipProcessImagesState)
 
-        const updateExhibitionProcessAudioState = new tasks.LambdaInvoke(this, "UpdateExhibitionProcessAudioState",
+        const updateInstitutionProcessAudioState = new tasks.LambdaInvoke(this, "UpdateInstitutionProcessAudioState",
             {
                 lambdaFunction: props.audioProcessorLambda,
                 inputPath: '$.asset.audios',
@@ -89,20 +89,20 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionProcessAudioState"), {
+            .addCatch(assetProcessingError("UpdateInstitutionProcessAudioState"), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
 
-        const updateExhibitionSkipProcessAudioState = new step.Pass(this, 'UpdateExhibitionSkipProcessAudioState');
-        const updateExhibitionChoiceProcessAudioState = new step.Choice(this, 'UpdateExhibitionChoiceProcessAudioState')
+        const updateInstitutionSkipProcessAudioState = new step.Pass(this, 'UpdateInstitutionSkipProcessAudioState');
+        const updateInstitutionChoiceProcessAudioState = new step.Choice(this, 'UpdateInstitutionChoiceProcessAudioState')
             .when(
                 step.Condition.isPresent('$.asset.audios'),
-                updateExhibitionProcessAudioState
+                updateInstitutionProcessAudioState
             )
-            .otherwise(updateExhibitionSkipProcessAudioState)
+            .otherwise(updateInstitutionSkipProcessAudioState)
 
-        const updateExhibitionDeleteAssetState = new tasks.LambdaInvoke(this, "UpdateExhibitionDeleteAssetState",
+        const updateInstitutionDeleteAssetState = new tasks.LambdaInvoke(this, "UpdateInstitutionDeleteAssetState",
             {
                 lambdaFunction: props.deleteAssetLambda,
                 inputPath: '$.asset.delete',
@@ -110,23 +110,23 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionDeleteAssetState"), {
+            .addCatch(assetProcessingError("UpdateInstitutionDeleteAssetState"), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
 
-        const updateExhibitionSkipDeleteAssetState = new step.Pass(this, 'UpdateExhibitionSkipDeleteAssetState');
-        const updateExhibitionChoiceDeleteAssetState = new step.Choice(this, 'UpdateExhibitionChoiceDeleteAssetState')
+        const updateInstitutionSkipDeleteAssetState = new step.Pass(this, 'UpdateInstitutionSkipDeleteAssetState');
+        const updateInstitutionChoiceDeleteAssetState = new step.Choice(this, 'UpdateInstitutionChoiceDeleteAssetState')
             .when(
                 step.Condition.isPresent('$.asset.delete'),
-                updateExhibitionDeleteAssetState
+                updateInstitutionDeleteAssetState
             )
-            .otherwise(updateExhibitionSkipDeleteAssetState)
+            .otherwise(updateInstitutionSkipDeleteAssetState)
 
-        const setExhibitionUpdated = new tasks.DynamoUpdateItem(this, 'SetExhibitionUpdated', {
+        const setInstitutionUpdated = new tasks.DynamoUpdateItem(this, 'SetInstitutionUpdated', {
             key: {
                 pk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$muse#id_{}', step.JsonPath.stringAt('$[0].entityId'))),
-                sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$exhibition_1#id_{}', step.JsonPath.stringAt('$[0].entityId'))),
+                sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$institution_1#id_{}', step.JsonPath.stringAt('$[0].entityId'))),
             },
             expressionAttributeNames: {
                 '#S': "status"
@@ -140,63 +140,63 @@ export class UpdateExhibitionConstruct extends Construct {
             resultPath: step.JsonPath.DISCARD
         });
 
-        const parallelUpdateExhibition = new step.Parallel(
+        const parallelUpdateInstitution = new step.Parallel(
             this,
-            'ParallelUpdateExhibition'
+            'ParallelUpdateInstitution'
         );
 
-        const invalidateCacheState = new tasks.LambdaInvoke(this, "UpdateExhibitionInvalidateCacheState",
+        const invalidateCacheState = new tasks.LambdaInvoke(this, "UpdateInstitutionInvalidateCacheState",
             {
                 lambdaFunction: props.cdnManagerLambda,
                 payload: step.TaskInput.fromObject({
                     paths: step.JsonPath.array(
                         step.JsonPath.format('/asset/{}/*', step.JsonPath.stringAt('$[0].entityId')),
-                        step.JsonPath.format('/v1/exhibitions/{}*', step.JsonPath.stringAt('$[0].entityId')),
+                        step.JsonPath.format('/v1/institutions/{}*', step.JsonPath.stringAt('$[0].entityId')),
                     )
                 }),
                 outputPath: '$',
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionInvalidateCacheState"), {
+            .addCatch(assetProcessingError("UpdateInstitutionInvalidateCacheState"), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
 
-        parallelUpdateExhibition.branch(updateExhibitionChoiceProcessImagesState);
-        parallelUpdateExhibition.branch(updateExhibitionChoiceProcessAudioState);
-        parallelUpdateExhibition.branch(updateExhibitionChoiceDeleteAssetState);
+        parallelUpdateInstitution.branch(updateInstitutionChoiceProcessImagesState);
+        parallelUpdateInstitution.branch(updateInstitutionChoiceProcessAudioState);
+        parallelUpdateInstitution.branch(updateInstitutionChoiceDeleteAssetState);
 
-        this.updateExhibitionStateMachine = new step.StateMachine(this, 'UpdateExhibitionStateMachine', {
-            stateMachineName: `crm-${props.envName}-update-exhibition-state-machine`,
+        this.updateInstitutionStateMachine = new step.StateMachine(this, 'UpdateInstitutionStateMachine', {
+            stateMachineName: `crm-${props.envName}-update-institution-state-machine`,
             stateMachineType: step.StateMachineType.EXPRESS,
             logs: {
-                destination: updateExhibitionLogGroup,
+                destination: updateInstitutionLogGroup,
                 level: step.LogLevel.ALL,
                 includeExecutionData: true,
             },
             definitionBody: step.DefinitionBody.fromChainable(
-                parallelUpdateExhibition
+                parallelUpdateInstitution
                     .next(invalidateCacheState)
-                    .next(setExhibitionUpdated)
+                    .next(setInstitutionUpdated)
                     .next(new step.Succeed(this, "Updated"))
             )
         });
 
-        // Update Exhibition lambda
-        this.updateExhibitionLambda = new lambdaNode.NodejsFunction(this, "UpdateExhibitionLambda", {
-            functionName: `crm-${props.envName}-update-exhibition-lambda`,
+        // Update Institution lambda
+        this.updateInstitutionLambda = new lambdaNode.NodejsFunction(this, "UpdateInstitutionLambda", {
+            functionName: `crm-${props.envName}-update-institution-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
-            entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibition-handler.ts"),
-            handler: "exhibitionUpdateHandler",
+            entry: path.join(__dirname, "../../../../muse-crm-server/src/institution-handler.ts"),
+            handler: "institutionUpdateHandler",
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
-                UPDATE_EXHIBITION_STEP_FUNCTION_ARN: this.updateExhibitionStateMachine.stateMachineArn,
+                UPDATE_INSTITUTION_STEP_FUNCTION_ARN: this.updateInstitutionStateMachine.stateMachineArn,
             }
         });
-        this.updateExhibitionLambda.addToRolePolicy(
+        this.updateInstitutionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:*"], // TODO: Tighten permissions
                 resources: [
@@ -205,9 +205,9 @@ export class UpdateExhibitionConstruct extends Construct {
                 ]
             })
         );
-        this.updateExhibitionLambda.addToRolePolicy(
+        this.updateInstitutionLambda.addToRolePolicy(
             new iam.PolicyStatement({
-                resources: [this.updateExhibitionStateMachine.stateMachineArn],
+                resources: [this.updateInstitutionStateMachine.stateMachineArn],
                 actions: ["states:StartExecution"],
                 effect: Effect.ALLOW
             })

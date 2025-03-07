@@ -2,9 +2,10 @@ import {Construct} from "constructs";
 import * as cdk from "aws-cdk-lib";
 import * as lambdaNode from "aws-cdk-lib/aws-lambda-nodejs";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
-import {GetExhibitionPreviewConstruct} from "./app-exhibition/GetExhibtionPreviewConstruct";
+import {GetExhibitionPreviewConstruct} from "./app-exhibition/GetExhibitionPreviewConstruct";
 import {GetExhibitPreviewConstruct} from "./app-exhibit/GetExhibtPreviewConstruct";
 import {GetExhibitPreviewsConstruct} from "./app-exhibit/GetExhibtPreviewsConstruct";
+import {GetInstitutionPreviewConstruct} from "./app-institution/GetInstitutionPreviewConstruct";
 
 export interface MuseAppBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -13,6 +14,8 @@ export interface MuseAppBackendConstructProps extends cdk.StackProps {
 
 export class MuseAppBackendConstruct extends Construct {
 
+    public readonly getInstitutionPreviewLambda: lambdaNode.NodejsFunction
+
     public readonly getExhibitionPreviewLambda: lambdaNode.NodejsFunction
 
     public readonly getExhibitPreviewLambda: lambdaNode.NodejsFunction
@@ -20,6 +23,14 @@ export class MuseAppBackendConstruct extends Construct {
 
     constructor(scope: Construct, id: string, props: MuseAppBackendConstructProps) {
         super(scope, id);
+
+        // Get Institution Preview Construct
+        const getInstitutionPreviewConstruct = new GetInstitutionPreviewConstruct(this, 'GetInstitutionPreviewConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getInstitutionPreviewLambda = getInstitutionPreviewConstruct.getInstitutionPreviewLambda
 
         // Get Exhibition Preview Construct
         const getExhibitionPreviewConstruct = new GetExhibitionPreviewConstruct(this, 'GetExhibitionPreviewConstruct', {

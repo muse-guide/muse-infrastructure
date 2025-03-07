@@ -151,7 +151,7 @@ export class UpdateExhibitConstruct extends Construct {
                 lambdaFunction: props.cdnManagerLambda,
                 payload: step.TaskInput.fromObject({
                     paths: step.JsonPath.array(
-                        step.JsonPath.format('/asset/exhibit/{}/*', step.JsonPath.stringAt('$[0].entityId')),
+                        step.JsonPath.format('/asset/{}/*', step.JsonPath.stringAt('$[0].entityId')),
                         step.JsonPath.format('/v1/exhibits/{}*', step.JsonPath.stringAt('$[0].entityId')),
                         step.JsonPath.format('/v1/exhibitions/{}/exhibits*', step.JsonPath.stringAt('$[0].entity.exhibitionId')),
                     )

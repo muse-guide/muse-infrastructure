@@ -23,6 +23,9 @@ import {GetInvoicesConstruct} from "./crm-invoice/GetInvoicesConstruct";
 import {GetInvoiceConstruct} from "./crm-invoice/GetInvoiceConstruct";
 import {GetPreSignedUrlConstruct} from "./crm-asset/GetPreSignedUrlConstruct";
 import {PutPreSignedUrlConstruct} from "./crm-asset/PutPreSignedUrlConstruct";
+import {CreateInstitutionConstruct} from "./crm-institution/CreateInstitutionConstruct";
+import {GetInstitutionConstruct} from "./crm-institution/GetInstitutionConstruct";
+import {UpdateInstitutionConstruct} from "./crm-institution/UpdateInstitutionConstruct";
 
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -42,6 +45,11 @@ export class MuseCrmBackendConstruct extends Construct {
     // Invoices
     public readonly getInvoicesLambda: lambdaNode.NodejsFunction
     public readonly getInvoiceLambda: lambdaNode.NodejsFunction
+
+    // Institution
+    public readonly createInstitutionLambda: lambdaNode.NodejsFunction
+    public readonly getInstitutionLambda: lambdaNode.NodejsFunction
+    public readonly updateInstitutionLambda: lambdaNode.NodejsFunction
 
     // Exhibition
     public readonly createExhibitionLambda: lambdaNode.NodejsFunction
@@ -102,6 +110,37 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.updateCustomerDetailsLambda = updateCustomerDetailsConstruct.updateCustomerDetailsLambda
+
+        // Create Institution Construct
+        const createInstitutionConstruct = new CreateInstitutionConstruct(this, 'CreateInstitutionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+            imageProcessorLambda: sharedLambdas.imageProcessorLambda,
+            qrCodeGeneratorLambda: sharedLambdas.qrCodeGeneratorLambda,
+            audioProcessorLambda: sharedLambdas.audioProcessorLambda
+        });
+
+        this.createInstitutionLambda = createInstitutionConstruct.createInstitutionLambda
+
+        // Get Institution Construct
+        const getInstitutionConstruct = new GetInstitutionConstruct(this, 'GetInstitutionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getInstitutionLambda = getInstitutionConstruct.getInstitutionLambda
+
+        // Update Institution Construct
+        const updateInstitutionConstruct = new UpdateInstitutionConstruct(this, 'UpdateInstitutionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+            imageProcessorLambda: sharedLambdas.imageProcessorLambda,
+            audioProcessorLambda: sharedLambdas.audioProcessorLambda,
+            deleteAssetLambda: sharedLambdas.deleteAssetLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
+        });
+
+        this.updateInstitutionLambda = updateInstitutionConstruct.updateInstitutionLambda
 
         // Create Exhibition Construct
         const createExhibitionConstruct = new CreateExhibitionConstruct(this, 'CreateExhibitionConstruct', {

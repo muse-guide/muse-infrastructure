@@ -34,8 +34,7 @@ export class GetExhibitionPreviewConstruct extends Construct {
             new iam.PolicyStatement({
                 actions: ["dynamodb:GetItem"], // TODO: Tighten permissions
                 resources: [
-                    props.storage.crmResourceTable.tableArn,
-                    `${props.storage.crmResourceTable.tableArn}/index/*`
+                    props.storage.crmResourceTable.tableArn
                 ]
             })
         );

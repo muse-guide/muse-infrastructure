@@ -77,7 +77,7 @@ export class DeleteExhibitionConstruct extends Construct {
                 lambdaFunction: props.cdnManagerLambda,
                 payload: step.TaskInput.fromObject({
                     paths: step.JsonPath.array(
-                        step.JsonPath.format('/asset/exhibitions/{}/*', step.JsonPath.stringAt('$.entityId')),
+                        step.JsonPath.format('/asset/{}/*', step.JsonPath.stringAt('$.entityId')),
                         step.JsonPath.format('/v1/exhibitions/{}*', step.JsonPath.stringAt('$.entityId')),
                     )
                 }),

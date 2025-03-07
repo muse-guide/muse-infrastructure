@@ -10,7 +10,6 @@ import * as awss3 from "aws-cdk-lib/aws-s3";
 import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
 import {MuseCrmBackendConstruct} from "./muse-crm-backend-construct";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
-import * as iam from "aws-cdk-lib/aws-iam";
 import {CognitoConstruct} from "./crm-customer/CognitoConstruct";
 
 export interface MuseCrmWebConstructProps extends cdk.StackProps {
@@ -98,6 +97,25 @@ export class MuseCrmWebConstruct extends Construct {
         });
 
         crmInvoiceEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getInvoiceLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        // Institution resources
+        const crmInstitutionEndpoint = crmApiRoot.addResource("institutions")
+        const crmInstitutionIdEndpoint = crmInstitutionEndpoint.addResource("{id}")
+
+        crmInstitutionEndpoint.addMethod("POST", new apigateway.LambdaIntegration(props.backend.createInstitutionLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmInstitutionEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getInstitutionLambda), {
+            authorizer: crmApiAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO
+        });
+
+        crmInstitutionIdEndpoint.addMethod("PUT", new apigateway.LambdaIntegration(props.backend.updateInstitutionLambda), {
             authorizer: crmApiAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO
         });

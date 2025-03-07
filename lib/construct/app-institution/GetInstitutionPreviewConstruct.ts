@@ -6,38 +6,35 @@ import * as path from "path";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
 import * as iam from "aws-cdk-lib/aws-iam";
 
-export interface GetExhibitPreviewConstructProps extends cdk.StackProps {
+export interface GetInstitutionPreviewConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct
 }
 
-export class GetExhibitPreviewConstruct extends Construct {
+export class GetInstitutionPreviewConstruct extends Construct {
 
-    public readonly getExhibitPreviewLambda: lambdaNode.NodejsFunction
+    public readonly getInstitutionPreviewLambda: lambdaNode.NodejsFunction
 
-    constructor(scope: Construct, id: string, props: GetExhibitPreviewConstructProps) {
+    constructor(scope: Construct, id: string, props: GetInstitutionPreviewConstructProps) {
         super(scope, id);
 
-        // Get Exhibition lambda
-        this.getExhibitPreviewLambda = new lambdaNode.NodejsFunction(this, "GetExhibitPreviewsLambda", {
-            functionName: `crm-${props.envName}-get-exhibit-preview-lambda`,
+        // Get Institution lambda
+        this.getInstitutionPreviewLambda = new lambdaNode.NodejsFunction(this, "GetInstitutionPreviewsLambda", {
+            functionName: `crm-${props.envName}-get-institution-preview-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
-            entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibit-preview-handler.ts"),
-            handler: "exhibitPreviewGetHandler",
+            entry: path.join(__dirname, "../../../../muse-crm-server/src/institution-preview-handler.ts"),
+            handler: "institutionPreviewGetHandler",
             environment: {
                 APP_DOMAIN: "https://duz68kh4juaad.cloudfront.net",
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
-            },
-            bundling: {
-                minify: true,
-            },
+            }
         });
-        this.getExhibitPreviewLambda.addToRolePolicy(
+        this.getInstitutionPreviewLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 actions: ["dynamodb:GetItem"], // TODO: Tighten permissions
                 resources: [
-                    props.storage.crmResourceTable.tableArn,
+                    props.storage.crmResourceTable.tableArn
                 ]
             })
         );
