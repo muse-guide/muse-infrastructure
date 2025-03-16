@@ -48,10 +48,10 @@ export class MuseAppWebConstruct extends Construct {
         // Institution resources
         const appInstitutionEndpoint = appApiRoot.addResource("institutions")
         const appInstitutionIdEndpoint   =  appInstitutionEndpoint.addResource("{id}")
-        const appInstitutionExhibitsEndpoint   =  appInstitutionIdEndpoint.addResource("exhibits")
+        const appInstitutionExhibitionsEndpoint   =  appInstitutionIdEndpoint.addResource("exhibitions")
 
         appInstitutionIdEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getInstitutionPreviewLambda));
-        appInstitutionExhibitsEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitPreviewsLambda));
+        appInstitutionExhibitionsEndpoint.addMethod("GET", new apigateway.LambdaIntegration(props.backend.getExhibitionPreviewsLambda));
 
         // Exhibition resources
         const appExhibitionEndpoint = appApiRoot.addResource("exhibitions")

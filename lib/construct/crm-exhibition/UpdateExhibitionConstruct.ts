@@ -152,6 +152,7 @@ export class UpdateExhibitionConstruct extends Construct {
                     paths: step.JsonPath.array(
                         step.JsonPath.format('/asset/{}/*', step.JsonPath.stringAt('$[0].entityId')),
                         step.JsonPath.format('/v1/exhibitions/{}*', step.JsonPath.stringAt('$[0].entityId')),
+                        step.JsonPath.format('/v1/institutions/{}/exhibitions*', step.JsonPath.stringAt('$[0].entity.institutionId')),
                     )
                 }),
                 outputPath: '$',

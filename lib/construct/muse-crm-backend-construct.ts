@@ -148,7 +148,8 @@ export class MuseCrmBackendConstruct extends Construct {
             storage: props.storage,
             imageProcessorLambda: sharedLambdas.imageProcessorLambda,
             qrCodeGeneratorLambda: sharedLambdas.qrCodeGeneratorLambda,
-            audioProcessorLambda: sharedLambdas.audioProcessorLambda
+            audioProcessorLambda: sharedLambdas.audioProcessorLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
         });
 
         this.createExhibitionLambda = createExhibitionConstruct.createExhibitionLambda

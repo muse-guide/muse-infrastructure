@@ -6,6 +6,7 @@ import {GetExhibitionPreviewConstruct} from "./app-exhibition/GetExhibitionPrevi
 import {GetExhibitPreviewConstruct} from "./app-exhibit/GetExhibtPreviewConstruct";
 import {GetExhibitPreviewsConstruct} from "./app-exhibit/GetExhibtPreviewsConstruct";
 import {GetInstitutionPreviewConstruct} from "./app-institution/GetInstitutionPreviewConstruct";
+import {GetExhibitionPreviewsConstruct} from "./app-exhibition/GetExhibtionPreviewsConstruct";
 
 export interface MuseAppBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -17,6 +18,7 @@ export class MuseAppBackendConstruct extends Construct {
     public readonly getInstitutionPreviewLambda: lambdaNode.NodejsFunction
 
     public readonly getExhibitionPreviewLambda: lambdaNode.NodejsFunction
+    public readonly getExhibitionPreviewsLambda: lambdaNode.NodejsFunction
 
     public readonly getExhibitPreviewLambda: lambdaNode.NodejsFunction
     public readonly getExhibitPreviewsLambda: lambdaNode.NodejsFunction
@@ -39,6 +41,14 @@ export class MuseAppBackendConstruct extends Construct {
         });
 
         this.getExhibitionPreviewLambda = getExhibitionPreviewConstruct.getExhibitionPreviewLambda
+
+        // Get Exhibition Previews Construct
+        const getExhibitionPreviewsConstruct = new GetExhibitionPreviewsConstruct(this, 'GetExhibitionPreviewsConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getExhibitionPreviewsLambda = getExhibitionPreviewsConstruct.getExhibitionPreviewsLambda
 
         // Get Exhibit Preview Construct
         const getExhibitPreviewConstruct = new GetExhibitPreviewConstruct(this, 'GetExhibitPreviewConstruct', {
