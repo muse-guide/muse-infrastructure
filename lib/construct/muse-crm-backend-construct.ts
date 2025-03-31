@@ -18,9 +18,6 @@ import {GetCustomerConstruct} from "./crm-customer/GetCustomerConstruct";
 import {UpdateSubscriptionConstruct} from "./crm-customer/UpdateSubscriptionConstruct";
 import {GetConfigurationConstruct} from "./crm-configuration/GetConfigurationConstruct";
 import {UpdateCustomerDetailsConstruct} from "./crm-customer/UpdateCustomerDetailsConstruct";
-import {IssueInvoicesConstruct} from "./crm-invoice/IssueInvoicesConstruct";
-import {GetInvoicesConstruct} from "./crm-invoice/GetInvoicesConstruct";
-import {GetInvoiceConstruct} from "./crm-invoice/GetInvoiceConstruct";
 import {GetPreSignedUrlConstruct} from "./crm-asset/GetPreSignedUrlConstruct";
 import {PutPreSignedUrlConstruct} from "./crm-asset/PutPreSignedUrlConstruct";
 import {CreateInstitutionConstruct} from "./crm-institution/CreateInstitutionConstruct";
@@ -41,10 +38,6 @@ export class MuseCrmBackendConstruct extends Construct {
     public readonly getCustomerLambda: lambdaNode.NodejsFunction
     public readonly updateSubscriptionLambda: lambdaNode.NodejsFunction
     public readonly updateCustomerDetailsLambda: lambdaNode.NodejsFunction
-
-    // Invoices
-    public readonly getInvoicesLambda: lambdaNode.NodejsFunction
-    public readonly getInvoiceLambda: lambdaNode.NodejsFunction
 
     // Institution
     public readonly createInstitutionLambda: lambdaNode.NodejsFunction
@@ -265,27 +258,5 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.generatePutPreSignedUrlLambda = generatePutPreSignedUrlConstruct.putPreSignedUrlLambda
-
-        // Issue invoices construct
-        const issueInvoicesConstruct = new IssueInvoicesConstruct(this, 'IssueInvoicesConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-        });
-
-        // Get customer invoices
-        const getInvoicesConstruct = new GetInvoicesConstruct(this, 'GetInvoicesConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-        });
-
-        this.getInvoicesLambda = getInvoicesConstruct.getInvoicesLambda
-
-        // Get invoice
-        const getInvoiceConstruct = new GetInvoiceConstruct(this, 'GetInvoiceConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-        });
-
-        this.getInvoiceLambda = getInvoiceConstruct.getInvoiceLambda
     }
 }

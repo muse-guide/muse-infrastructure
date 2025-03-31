@@ -98,7 +98,10 @@ export class CreateExhibitionConstruct extends Construct {
         const createExhibitionProcessAudioState = new tasks.LambdaInvoke(this, "CreateExhibitionProcessAudioState",
             {
                 lambdaFunction: props.audioProcessorLambda,
-                inputPath: '$.asset.audios',
+                payload: step.TaskInput.fromObject({
+                    actor: step.JsonPath.objectAt('$.actor'),
+                    audios: step.JsonPath.objectAt('$.asset.audios'),
+                }),
                 outputPath: '$',
                 resultPath: step.JsonPath.DISCARD
             })

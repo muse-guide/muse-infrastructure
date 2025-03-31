@@ -27,6 +27,7 @@ export class AudioPreviewConstruct extends Construct {
             handler: "generateAudioPreviewHandler",
             environment: {
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
+                RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
             }
         });
         props.storage.crmAssetBucket.grantReadWrite(this.audioPreviewLambda);
@@ -40,6 +41,16 @@ export class AudioPreviewConstruct extends Construct {
             new iam.Policy(this, 'AudioPreviewSynthesizeSpeechPolicy', {
                 statements: [pollySynthesizeSpeechPolicyStatement],
             }),
+        );
+
+        this.audioPreviewLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["dynamodb:*"], // TODO: Tighten permissions
+                resources: [
+                    props.storage.crmResourceTable.tableArn,
+                    `${props.storage.crmResourceTable.tableArn}/index/*`
+                ]
+            })
         );
     }
 }

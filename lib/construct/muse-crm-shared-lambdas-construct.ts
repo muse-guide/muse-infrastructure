@@ -56,7 +56,8 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             timeout: cdk.Duration.seconds(180),
             environment: {
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
-                APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName
+                APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName,
+                RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
             }
         });
         props.storage.crmAssetBucket.grantReadWrite(this.audioProcessorLambda);
@@ -71,6 +72,15 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             new iam.Policy(this, 'SynthesizeSpeechPolicy', {
                 statements: [pollySynthesizeSpeechPolicyStatement],
             }),
+        );
+        this.audioProcessorLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["dynamodb:*"], // TODO: Tighten permissions
+                resources: [
+                    props.storage.crmResourceTable.tableArn,
+                    `${props.storage.crmResourceTable.tableArn}/index/*`
+                ]
+            })
         );
 
         // QR code generator
