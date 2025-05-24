@@ -11,6 +11,7 @@ import {GetExhibitionPreviewsConstruct} from "./app-exhibition/GetExhibtionPrevi
 export interface MuseAppBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct
+    readonly appDomainName: string
 }
 
 export class MuseAppBackendConstruct extends Construct {
@@ -30,6 +31,7 @@ export class MuseAppBackendConstruct extends Construct {
         const getInstitutionPreviewConstruct = new GetInstitutionPreviewConstruct(this, 'GetInstitutionPreviewConstruct', {
             envName: props.envName,
             storage: props.storage,
+            appDomainName: props.appDomainName
         });
 
         this.getInstitutionPreviewLambda = getInstitutionPreviewConstruct.getInstitutionPreviewLambda
@@ -38,6 +40,7 @@ export class MuseAppBackendConstruct extends Construct {
         const getExhibitionPreviewConstruct = new GetExhibitionPreviewConstruct(this, 'GetExhibitionPreviewConstruct', {
             envName: props.envName,
             storage: props.storage,
+            appDomainName: props.appDomainName
         });
 
         this.getExhibitionPreviewLambda = getExhibitionPreviewConstruct.getExhibitionPreviewLambda
@@ -46,6 +49,7 @@ export class MuseAppBackendConstruct extends Construct {
         const getExhibitionPreviewsConstruct = new GetExhibitionPreviewsConstruct(this, 'GetExhibitionPreviewsConstruct', {
             envName: props.envName,
             storage: props.storage,
+            appDomainName: props.appDomainName
         });
 
         this.getExhibitionPreviewsLambda = getExhibitionPreviewsConstruct.getExhibitionPreviewsLambda
@@ -54,6 +58,7 @@ export class MuseAppBackendConstruct extends Construct {
         const getExhibitPreviewConstruct = new GetExhibitPreviewConstruct(this, 'GetExhibitPreviewConstruct', {
             envName: props.envName,
             storage: props.storage,
+            appDomainName: props.appDomainName
         });
 
         this.getExhibitPreviewLambda = getExhibitPreviewConstruct.getExhibitPreviewLambda
@@ -62,6 +67,7 @@ export class MuseAppBackendConstruct extends Construct {
         const getExhibitPreviewsConstruct = new GetExhibitPreviewsConstruct(this, 'GetExhibitPreviewsConstruct', {
             envName: props.envName,
             storage: props.storage,
+            appDomainName: props.appDomainName
         });
 
         this.getExhibitPreviewsLambda = getExhibitPreviewsConstruct.getExhibitPreviewsLambda

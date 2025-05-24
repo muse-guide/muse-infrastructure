@@ -9,6 +9,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 export interface GetInstitutionPreviewConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct
+    readonly appDomainName: string
 }
 
 export class GetInstitutionPreviewConstruct extends Construct {
@@ -26,7 +27,7 @@ export class GetInstitutionPreviewConstruct extends Construct {
             entry: path.join(__dirname, "../../../../muse-crm-server/src/institution-preview-handler.ts"),
             handler: "institutionPreviewGetHandler",
             environment: {
-                APP_DOMAIN: "https://duz68kh4juaad.cloudfront.net",
+                APP_DOMAIN: props.appDomainName,
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
             }
         });

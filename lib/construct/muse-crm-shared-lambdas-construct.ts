@@ -8,7 +8,8 @@ import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
 
 export interface MuseCrmCommonLambdasConstructProps extends cdk.StackProps {
     readonly envName: string,
-    readonly storage: MuseCrmStorageConstruct
+    readonly storage: MuseCrmStorageConstruct,
+    readonly appDomainName: string,
 }
 
 export class MuseCrmSharedLambdasConstruct extends Construct {
@@ -41,8 +42,8 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
                 APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName
             },
-            timeout: cdk.Duration.seconds(120),
-            memorySize: 512
+            timeout: cdk.Duration.seconds(180),
+            memorySize: 1024
         });
         props.storage.crmAssetBucket.grantReadWrite(this.imageProcessorLambda);
         props.storage.appAssetBucket.grantReadWrite(this.imageProcessorLambda);
@@ -58,6 +59,8 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
                 APP_ASSET_BUCKET: props.storage.appAssetBucket.bucketName,
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
+                ELEVEN_LABS_API_KEY_PARAMETER_NAME: `/crm/${props.envName}/eleven-labs-api-key`,
+                GOOGLE_TTS_API_KEY_PARAMETER_NAME: `/crm/${props.envName}/google-tts-api-key`
             }
         });
         props.storage.crmAssetBucket.grantReadWrite(this.audioProcessorLambda);
@@ -83,6 +86,16 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             })
         );
 
+        this.audioProcessorLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["ssm:GetParameter"],
+                resources: [
+                    `arn:aws:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter/crm/${props.envName}/eleven-labs-api-key`,
+                    `arn:aws:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter/crm/${props.envName}/google-tts-api-key`,
+                ]
+            })
+        );
+
         // QR code generator
         this.qrCodeGeneratorLambda = new lambdaNode.NodejsFunction(this, "CrmQrCodeGeneratorLambda", {
             functionName: `crm-${props.envName}-qr-code-generator-lambda`,
@@ -91,7 +104,7 @@ export class MuseCrmSharedLambdasConstruct extends Construct {
             entry: path.join(__dirname, "../../../muse-crm-server/src/qr-code-generator.ts"),
             timeout: cdk.Duration.seconds(180),
             environment: {
-                APP_DOMAIN: "https://duz68kh4juaad.cloudfront.net",
+                APP_DOMAIN: props.appDomainName,
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName
             }
         });

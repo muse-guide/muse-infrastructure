@@ -25,9 +25,12 @@ export class AudioPreviewConstruct extends Construct {
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../../muse-crm-server/src/audio-preview-handler.ts"),
             handler: "generateAudioPreviewHandler",
+            timeout: cdk.Duration.seconds(180),
             environment: {
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
+                ELEVEN_LABS_API_KEY_PARAMETER_NAME: `/crm/${props.envName}/eleven-labs-api-key`,
+                GOOGLE_TTS_API_KEY_PARAMETER_NAME: `/crm/${props.envName}/google-tts-api-key`
             }
         });
         props.storage.crmAssetBucket.grantReadWrite(this.audioPreviewLambda);
@@ -49,6 +52,16 @@ export class AudioPreviewConstruct extends Construct {
                 resources: [
                     props.storage.crmResourceTable.tableArn,
                     `${props.storage.crmResourceTable.tableArn}/index/*`
+                ]
+            })
+        );
+
+        this.audioPreviewLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["ssm:GetParameter"],
+                resources: [
+                    `arn:aws:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter/crm/${props.envName}/eleven-labs-api-key`,
+                    `arn:aws:ssm:${cdk.Aws.REGION}:${cdk.Aws.ACCOUNT_ID}:parameter/crm/${props.envName}/google-tts-api-key`,
                 ]
             })
         );

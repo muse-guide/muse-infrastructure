@@ -10,6 +10,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import {Effect} from "aws-cdk-lib/aws-iam";
 import {LogGroup, RetentionDays} from "aws-cdk-lib/aws-logs";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
+import {assetProcessingError, createUnlockSubscriptionParallelTask} from "../../common/CommonResources";
 
 export interface CreateInstitutionConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -26,27 +27,6 @@ export class CreateInstitutionConstruct extends Construct {
 
     constructor(scope: Construct, id: string, props: CreateInstitutionConstructProps) {
         super(scope, id);
-
-        const assetProcessingError = (id: string) => {
-            return new tasks.DynamoUpdateItem(this, `ProcessingError-${id}`, {
-                key: {
-                    pk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$muse#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                    sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$institution_1#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                },
-                expressionAttributeNames: {
-                    '#S': "status"
-                },
-                expressionAttributeValues: {
-                    ':val': tasks.DynamoAttributeValue.fromString("ERROR")
-                },
-                table: props.storage.crmResourceTable,
-                updateExpression: 'SET #S=:val',
-                outputPath: '$.entityId',
-                resultPath: step.JsonPath.DISCARD
-            })
-                .addRetry(retryPolicy)
-                .next(new step.Fail(this, `CreateInstitutionFail-${id}`))
-        }
 
         // Create Institution Step Function
         const retryPolicy: cdk.aws_stepfunctions.RetryProps = {
@@ -68,7 +48,7 @@ export class CreateInstitutionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("CreateInstitutionGenerateQrCodeState"), {
+            .addCatch(assetProcessingError(this, "CreateInstitutionGenerateQrCodeState", props.storage.crmResourceTable, 'institution'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -81,7 +61,7 @@ export class CreateInstitutionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("CreateInstitutionProcessImagesState"), {
+            .addCatch(assetProcessingError(this, "CreateInstitutionProcessImagesState", props.storage.crmResourceTable, 'institution'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -105,7 +85,7 @@ export class CreateInstitutionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("CreateInstitutionProcessAudioState"), {
+            .addCatch(assetProcessingError(this, "CreateInstitutionProcessAudioState", props.storage.crmResourceTable, 'institution'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -135,6 +115,8 @@ export class CreateInstitutionConstruct extends Construct {
             resultPath: step.JsonPath.DISCARD
         });
 
+        const unlockSubscription = createUnlockSubscriptionParallelTask(this, 'CreateInstitution', props.storage.crmResourceTable)
+
         const parallelCreateInstitution = new step.Parallel(
             this,
             'ParallelCreateInstitution'
@@ -143,6 +125,14 @@ export class CreateInstitutionConstruct extends Construct {
         parallelCreateInstitution.branch(createInstitutionGenerateQrCodeState);
         parallelCreateInstitution.branch(createInstitutionChoiceProcessImagesState);
         parallelCreateInstitution.branch(createInstitutionChoiceProcessAudioState);
+
+        const parallelCreateInstitutionSucceed = new step.Parallel(
+            this,
+            'ParallelCreateInstitutionSucceed'
+        );
+
+        parallelCreateInstitutionSucceed.branch(setInstitutionCreated)
+        parallelCreateInstitutionSucceed.branch(unlockSubscription);
 
         this.createInstitutionStateMachine = new step.StateMachine(this, 'CreateInstitutionStateMachine', {
             stateMachineName: `crm-${props.envName}-create-institution-state-machine`,
@@ -154,7 +144,7 @@ export class CreateInstitutionConstruct extends Construct {
             },
             definitionBody: step.DefinitionBody.fromChainable(
                 parallelCreateInstitution
-                    .next(setInstitutionCreated)
+                    .next(parallelCreateInstitutionSucceed)
                     .next(new step.Succeed(this, "Created"))
             )
         });
@@ -166,6 +156,7 @@ export class CreateInstitutionConstruct extends Construct {
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../../muse-crm-server/src/institution-handler.ts"),
             handler: "institutionCreateHandler",
+            timeout: cdk.Duration.seconds(30),
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,

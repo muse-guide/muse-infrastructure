@@ -10,11 +10,14 @@ import {ApiGatewayConstruct} from "../common/api-gateway-construct";
 import {MuseAppBackendConstruct} from "./muse-app-backend-construct";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
 import {join} from "path";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 
 export interface MuseAppWebConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly backend: MuseAppBackendConstruct
     readonly storage: MuseCrmStorageConstruct
+    readonly appDomainName: string
+    readonly certificateArn: string
 }
 
 const API_KEY = "91f5ee14-07d0-46b3-8700-41ecdd4f6305"
@@ -73,6 +76,8 @@ export class MuseAppWebConstruct extends Construct {
         this.appDistribution = new cloudfront.Distribution(this, "AppDistribution", {
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
             defaultRootObject: "index.html",
+            domainNames: [props.appDomainName],
+            certificate: acm.Certificate.fromCertificateArn(this, "Certificate" , props.certificateArn),
             defaultBehavior: {
                 origin: new origins.S3Origin(appUiBucket, {originAccessIdentity: appUiOriginAccessIdentity}),
                 viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,

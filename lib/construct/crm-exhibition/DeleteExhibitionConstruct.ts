@@ -10,12 +10,14 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import {Effect} from "aws-cdk-lib/aws-iam";
 import {LogGroup, RetentionDays} from "aws-cdk-lib/aws-logs";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
+import {assetProcessingError} from "../../common/CommonResources";
 
 export interface DeleteExhibitionConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct,
     readonly deleteAssetLambda: lambdaNode.NodejsFunction,
     readonly cdnManagerLambda: lambdaNode.NodejsFunction,
+    readonly deleteExhibitStateMachine: step.StateMachine,
 }
 
 export class DeleteExhibitionConstruct extends Construct {
@@ -25,27 +27,6 @@ export class DeleteExhibitionConstruct extends Construct {
 
     constructor(scope: Construct, id: string, props: DeleteExhibitionConstructProps) {
         super(scope, id);
-
-        const assetProcessingError = (id: string, status: string) => {
-            return new tasks.DynamoUpdateItem(this, `ProcessingError-${id}`, {
-                key: {
-                    pk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$muse#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                    sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$exhibition_1#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                },
-                expressionAttributeNames: {
-                    '#S': "status"
-                },
-                expressionAttributeValues: {
-                    ':val': tasks.DynamoAttributeValue.fromString(status)
-                },
-                table: props.storage.crmResourceTable,
-                updateExpression: 'SET #S=:val',
-                outputPath: '$.entityId',
-                resultPath: step.JsonPath.DISCARD
-            })
-                .addRetry(retryPolicy)
-                .next(new step.Fail(this, `DeleteExhibitionFail-${id}`))
-        }
 
         // Delete Exhibition Step Function
         const retryPolicy: cdk.aws_stepfunctions.RetryProps = {
@@ -67,7 +48,7 @@ export class DeleteExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("DeleteExhibitionDeleteAssetState", "ERROR"), {
+            .addCatch(assetProcessingError(this, "DeleteExhibitionDeleteAssetState", props.storage.crmResourceTable, 'exhibition'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -85,7 +66,7 @@ export class DeleteExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionInvalidateCacheState", "ERROR"), {
+            .addCatch(assetProcessingError(this, "UpdateExhibitionInvalidateCacheState", props.storage.crmResourceTable, 'exhibition'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -115,6 +96,7 @@ export class DeleteExhibitionConstruct extends Construct {
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
                 DELETE_EXHIBITION_STEP_FUNCTION_ARN: this.deleteExhibitionStateMachine.stateMachineArn,
+                DELETE_EXHIBIT_STEP_FUNCTION_ARN: props.deleteExhibitStateMachine.stateMachineArn,
             }
         });
         this.deleteExhibitionLambda.addToRolePolicy(
@@ -129,6 +111,13 @@ export class DeleteExhibitionConstruct extends Construct {
         this.deleteExhibitionLambda.addToRolePolicy(
             new iam.PolicyStatement({
                 resources: [this.deleteExhibitionStateMachine.stateMachineArn],
+                actions: ["states:StartExecution"],
+                effect: Effect.ALLOW
+            })
+        )
+        this.deleteExhibitionLambda.addToRolePolicy(
+            new iam.PolicyStatement({
+                resources: [props.deleteExhibitStateMachine.stateMachineArn],
                 actions: ["states:StartExecution"],
                 effect: Effect.ALLOW
             })

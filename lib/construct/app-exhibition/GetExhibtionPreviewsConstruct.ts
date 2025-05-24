@@ -9,6 +9,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 export interface GetExhibitionPreviewsConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct
+    readonly appDomainName: string
 }
 
 export class GetExhibitionPreviewsConstruct extends Construct {
@@ -18,7 +19,7 @@ export class GetExhibitionPreviewsConstruct extends Construct {
     constructor(scope: Construct, id: string, props: GetExhibitionPreviewsConstructProps) {
         super(scope, id);
 
-        // Get Exhibitionion lambda
+        // Get Exhibition lambda
         this.getExhibitionPreviewsLambda = new lambdaNode.NodejsFunction(this, "GetExhibitionPreviewsLambda", {
             functionName: `crm-${props.envName}-get-exhibition-previews-lambda`,
             runtime: lambda.Runtime.NODEJS_20_X,
@@ -26,7 +27,7 @@ export class GetExhibitionPreviewsConstruct extends Construct {
             entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibition-preview-handler.ts"),
             handler: "exhibitionPreviewsGetHandler",
             environment: {
-                APP_DOMAIN: "https://duz68kh4juaad.cloudfront.net",
+                APP_DOMAIN: props.appDomainName,
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName
             },
             bundling: {

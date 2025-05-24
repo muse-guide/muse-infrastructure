@@ -10,6 +10,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import {Effect} from "aws-cdk-lib/aws-iam";
 import {LogGroup, RetentionDays} from "aws-cdk-lib/aws-logs";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
+import {assetProcessingError} from "../../common/CommonResources";
 
 export interface DeleteExhibitConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -25,27 +26,6 @@ export class DeleteExhibitConstruct extends Construct {
 
     constructor(scope: Construct, id: string, props: DeleteExhibitConstructProps) {
         super(scope, id);
-
-        const assetProcessingError = (id: string, status: string) => {
-            return new tasks.DynamoUpdateItem(this, `ProcessingError-${id}`, {
-                key: {
-                    pk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$muse#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                    sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$exhibit_1#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                },
-                expressionAttributeNames: {
-                    '#S': "status"
-                },
-                expressionAttributeValues: {
-                    ':val': tasks.DynamoAttributeValue.fromString(status)
-                },
-                table: props.storage.crmResourceTable,
-                updateExpression: 'SET #S=:val',
-                outputPath: '$.entityId',
-                resultPath: step.JsonPath.DISCARD
-            })
-                .addRetry(retryPolicy)
-                .next(new step.Fail(this, `DeleteExhibitFail-${id}`))
-        }
 
         // Delete Exhibit Step Function
         const retryPolicy: cdk.aws_stepfunctions.RetryProps = {
@@ -67,7 +47,7 @@ export class DeleteExhibitConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("DeleteExhibitDeleteAssetState", "ERROR"), {
+            .addCatch(assetProcessingError(this, "DeleteExhibitDeleteAssetState", props.storage.crmResourceTable, 'exhibit'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -86,7 +66,7 @@ export class DeleteExhibitConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("DeleteExhibitInvalidateCacheState", "ERROR"), {
+            .addCatch(assetProcessingError(this, "DeleteExhibitInvalidateCacheState", props.storage.crmResourceTable, 'exhibit'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })

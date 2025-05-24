@@ -10,6 +10,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import {Effect} from "aws-cdk-lib/aws-iam";
 import {LogGroup, RetentionDays} from "aws-cdk-lib/aws-logs";
 import {MuseCrmStorageConstruct} from "../muse-crm-storage-construct";
+import {assetProcessingError, createUnlockSubscriptionParallelTask} from "../../common/CommonResources";
 
 export interface UpdateExhibitionConstructProps extends cdk.StackProps {
     readonly envName: string,
@@ -26,27 +27,6 @@ export class UpdateExhibitionConstruct extends Construct {
 
     constructor(scope: Construct, id: string, props: UpdateExhibitionConstructProps) {
         super(scope, id);
-
-        const assetProcessingError = (id: string) => {
-            return new tasks.DynamoUpdateItem(this, `ProcessingError-${id}`, {
-                key: {
-                    pk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$muse#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                    sk: tasks.DynamoAttributeValue.fromString(step.JsonPath.format('$exhibition_1#id_{}', step.JsonPath.stringAt('$.entityId'))),
-                },
-                expressionAttributeNames: {
-                    '#S': "status"
-                },
-                expressionAttributeValues: {
-                    ':val': tasks.DynamoAttributeValue.fromString("ERROR")
-                },
-                table: props.storage.crmResourceTable,
-                updateExpression: 'SET #S=:val',
-                outputPath: '$.entityId',
-                resultPath: step.JsonPath.DISCARD
-            })
-                .addRetry(retryPolicy)
-                .next(new step.Fail(this, `UpdateExhibitionFail-${id}`))
-        }
 
         // Update Exhibition Step Function
         const retryPolicy: cdk.aws_stepfunctions.RetryProps = {
@@ -68,7 +48,7 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionProcessImagesState"), {
+            .addCatch(assetProcessingError(this, "UpdateExhibitionProcessImagesState", props.storage.crmResourceTable, 'exhibition'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -92,7 +72,7 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionProcessAudioState"), {
+            .addCatch(assetProcessingError(this, "UpdateExhibitionProcessAudioState", props.storage.crmResourceTable, 'exhibition'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -113,7 +93,7 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionDeleteAssetState"), {
+            .addCatch(assetProcessingError(this, "UpdateExhibitionDeleteAssetState", props.storage.crmResourceTable, 'exhibition'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
@@ -143,10 +123,7 @@ export class UpdateExhibitionConstruct extends Construct {
             resultPath: step.JsonPath.DISCARD
         });
 
-        const parallelUpdateExhibition = new step.Parallel(
-            this,
-            'ParallelUpdateExhibition'
-        );
+        const unlockSubscription = createUnlockSubscriptionParallelTask(this, 'UpdateExhibition', props.storage.crmResourceTable)
 
         const invalidateCacheState = new tasks.LambdaInvoke(this, "UpdateExhibitionInvalidateCacheState",
             {
@@ -162,14 +139,27 @@ export class UpdateExhibitionConstruct extends Construct {
                 resultPath: step.JsonPath.DISCARD
             })
             .addRetry(retryPolicy)
-            .addCatch(assetProcessingError("UpdateExhibitionInvalidateCacheState"), {
+            .addCatch(assetProcessingError(this, "UpdateExhibitionInvalidateCacheState", props.storage.crmResourceTable, 'exhibition'), {
                 errors: ['States.ALL'],
                 resultPath: '$.errorInfo',
             })
 
-        parallelUpdateExhibition.branch(updateExhibitionChoiceProcessImagesState);
-        parallelUpdateExhibition.branch(updateExhibitionChoiceProcessAudioState);
-        parallelUpdateExhibition.branch(updateExhibitionChoiceDeleteAssetState);
+        const parallelUpdateExhibitionAsset = new step.Parallel(
+            this,
+            'ParallelUpdateExhibitionAsset'
+        );
+
+        parallelUpdateExhibitionAsset.branch(updateExhibitionChoiceProcessImagesState);
+        parallelUpdateExhibitionAsset.branch(updateExhibitionChoiceProcessAudioState);
+        parallelUpdateExhibitionAsset.branch(updateExhibitionChoiceDeleteAssetState);
+
+        const parallelUpdateExhibitionSucceed = new step.Parallel(
+            this,
+            'ParallelUpdateExhibitionSucceed'
+        );
+
+        parallelUpdateExhibitionSucceed.branch(setExhibitionUpdated)
+        parallelUpdateExhibitionSucceed.branch(unlockSubscription);
 
         this.updateExhibitionStateMachine = new step.StateMachine(this, 'UpdateExhibitionStateMachine', {
             stateMachineName: `crm-${props.envName}-update-exhibition-state-machine`,
@@ -180,9 +170,9 @@ export class UpdateExhibitionConstruct extends Construct {
                 includeExecutionData: true,
             },
             definitionBody: step.DefinitionBody.fromChainable(
-                parallelUpdateExhibition
+                parallelUpdateExhibitionAsset
                     .next(invalidateCacheState)
-                    .next(setExhibitionUpdated)
+                    .next(parallelUpdateExhibitionSucceed)
                     .next(new step.Succeed(this, "Updated"))
             )
         });
@@ -194,6 +184,7 @@ export class UpdateExhibitionConstruct extends Construct {
             // reservedConcurrentExecutions: 1 // TODO: increase quota for lambda
             entry: path.join(__dirname, "../../../../muse-crm-server/src/exhibition-handler.ts"),
             handler: "exhibitionUpdateHandler",
+            timeout: cdk.Duration.seconds(30),
             environment: {
                 RESOURCE_TABLE_NAME: props.storage.crmResourceTable.tableName,
                 CRM_ASSET_BUCKET: props.storage.crmAssetBucket.bucketName,

@@ -24,7 +24,7 @@ export class CognitoConstruct extends Construct {
         this.userPool = new cognito.UserPool(this, "UserPool", {
             userPoolName: `${props.application}-${props.envName}-cognito-user-pool`,
             signInAliases: {email: true, username: false},
-            selfSignUpEnabled: true,
+            selfSignUpEnabled: false,
             removalPolicy: RemovalPolicy.DESTROY,
         });
 

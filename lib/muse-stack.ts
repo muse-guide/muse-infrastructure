@@ -9,6 +9,8 @@ import {MuseAppWebConstruct} from "./construct/muse-app-web-construct";
 
 export interface MuseCrmStackProps extends cdk.StackProps {
     readonly envName: string,
+    readonly domainName: string,
+    readonly certificateArn: string,
 }
 
 export class MuseStack extends Stack {
@@ -23,27 +25,33 @@ export class MuseStack extends Stack {
         // Crm backend
         const crmBackend = new MuseCrmBackendConstruct(this, "CrmBackend", {
             envName: props.envName,
-            storage: crmStorage
+            storage: crmStorage,
+            appDomainName: `app.${props.domainName}`,
         })
 
         // Crm web
         const crmWeb = new MuseCrmWebConstruct(this, "CrmWeb", {
             envName: props.envName,
             backend: crmBackend,
-            storage: crmStorage
+            storage: crmStorage,
+            consoleDomainName: `console.${props.domainName}`,
+            certificateArn: props.certificateArn,
         })
 
         // App backend
         const appBackend = new MuseAppBackendConstruct(this, "AppBackend", {
             envName: props.envName,
-            storage: crmStorage
+            storage: crmStorage,
+            appDomainName: `app.${props.domainName}`,
         })
 
         // App web
         const appWeb = new MuseAppWebConstruct(this, "AppWeb", {
             envName: props.envName,
             backend: appBackend,
-            storage: crmStorage
+            storage: crmStorage,
+            appDomainName: `app.${props.domainName}`,
+            certificateArn: props.certificateArn,
         })
 
         // Outputs

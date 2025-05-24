@@ -7,6 +7,7 @@ import {join} from "path";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as awss3 from "aws-cdk-lib/aws-s3";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as s3Deployment from "aws-cdk-lib/aws-s3-deployment";
 import {MuseCrmBackendConstruct} from "./muse-crm-backend-construct";
 import {MuseCrmStorageConstruct} from "./muse-crm-storage-construct";
@@ -16,6 +17,8 @@ export interface MuseCrmWebConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly backend: MuseCrmBackendConstruct
     readonly storage: MuseCrmStorageConstruct
+    readonly consoleDomainName: string
+    readonly certificateArn: string
 }
 
 const API_KEY = "884a1685-00b6-4f79-80d6-5f01499f25f4"
@@ -190,6 +193,8 @@ export class MuseCrmWebConstruct extends Construct {
         // Add Distribution to front API GW, mobile app and asset S3 bucket
         this.crmDistribution = new cloudfront.Distribution(this, "CrmDistribution", {
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+            domainNames: [props.consoleDomainName],
+            certificate: acm.Certificate.fromCertificateArn(this, "Certificate" , props.certificateArn),
             defaultRootObject: "index.html",
             defaultBehavior: {
                 origin: new origins.S3Origin(crmUiBucket, {originAccessIdentity: crmUiOriginAccessIdentity}),

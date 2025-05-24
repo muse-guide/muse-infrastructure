@@ -27,6 +27,7 @@ import {UpdateInstitutionConstruct} from "./crm-institution/UpdateInstitutionCon
 export interface MuseCrmBackendConstructProps extends cdk.StackProps {
     readonly envName: string,
     readonly storage: MuseCrmStorageConstruct
+    readonly appDomainName: string,
 }
 
 export class MuseCrmBackendConstruct extends Construct {
@@ -69,7 +70,8 @@ export class MuseCrmBackendConstruct extends Construct {
         // Shared lambdas
         const sharedLambdas = new MuseCrmSharedLambdasConstruct(this, 'CrmSharedLambdas', {
             envName: props.envName,
-            storage: props.storage
+            storage: props.storage,
+            appDomainName: props.appDomainName
         });
 
         // Get Configuration Construct
@@ -135,56 +137,6 @@ export class MuseCrmBackendConstruct extends Construct {
 
         this.updateInstitutionLambda = updateInstitutionConstruct.updateInstitutionLambda
 
-        // Create Exhibition Construct
-        const createExhibitionConstruct = new CreateExhibitionConstruct(this, 'CreateExhibitionConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-            imageProcessorLambda: sharedLambdas.imageProcessorLambda,
-            qrCodeGeneratorLambda: sharedLambdas.qrCodeGeneratorLambda,
-            audioProcessorLambda: sharedLambdas.audioProcessorLambda,
-            cdnManagerLambda: sharedLambdas.cdnManagerLambda
-        });
-
-        this.createExhibitionLambda = createExhibitionConstruct.createExhibitionLambda
-
-        // Get Exhibition Construct
-        const getExhibitionConstruct = new GetExhibitionConstruct(this, 'GetExhibitionConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-        });
-
-        this.getExhibitionLambda = getExhibitionConstruct.getExhibitionLambda
-
-        // Get Exhibitions Construct
-        const getExhibitionsConstruct = new GetExhibitionsConstruct(this, 'GetExhibitionsConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-        });
-
-        this.getExhibitionsLambda = getExhibitionsConstruct.getExhibitionsLambda
-
-        // Delete Exhibition Construct
-        const deleteExhibitionConstruct = new DeleteExhibitionConstruct(this, 'DeleteExhibitionConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-            deleteAssetLambda: sharedLambdas.deleteAssetLambda,
-            cdnManagerLambda: sharedLambdas.cdnManagerLambda
-        });
-
-        this.deleteExhibitionLambda = deleteExhibitionConstruct.deleteExhibitionLambda
-
-        // Update Exhibition Construct
-        const updateExhibitionConstruct = new UpdateExhibitionConstruct(this, 'UpdateExhibitionConstruct', {
-            envName: props.envName,
-            storage: props.storage,
-            imageProcessorLambda: sharedLambdas.imageProcessorLambda,
-            audioProcessorLambda: sharedLambdas.audioProcessorLambda,
-            deleteAssetLambda: sharedLambdas.deleteAssetLambda,
-            cdnManagerLambda: sharedLambdas.cdnManagerLambda
-        });
-
-        this.updateExhibitionLambda = updateExhibitionConstruct.updateExhibitionLambda
-
         // Create Exhibit Construct
         const createExhibitConstruct = new CreateExhibitConstruct(this, 'CreateExhibitConstruct', {
             envName: props.envName,
@@ -234,6 +186,57 @@ export class MuseCrmBackendConstruct extends Construct {
         });
 
         this.updateExhibitLambda = updateExhibitConstruct.updateExhibitLambda
+
+        // Create Exhibition Construct
+        const createExhibitionConstruct = new CreateExhibitionConstruct(this, 'CreateExhibitionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+            imageProcessorLambda: sharedLambdas.imageProcessorLambda,
+            qrCodeGeneratorLambda: sharedLambdas.qrCodeGeneratorLambda,
+            audioProcessorLambda: sharedLambdas.audioProcessorLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
+        });
+
+        this.createExhibitionLambda = createExhibitionConstruct.createExhibitionLambda
+
+        // Get Exhibition Construct
+        const getExhibitionConstruct = new GetExhibitionConstruct(this, 'GetExhibitionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getExhibitionLambda = getExhibitionConstruct.getExhibitionLambda
+
+        // Get Exhibitions Construct
+        const getExhibitionsConstruct = new GetExhibitionsConstruct(this, 'GetExhibitionsConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+        });
+
+        this.getExhibitionsLambda = getExhibitionsConstruct.getExhibitionsLambda
+
+        // Delete Exhibition Construct
+        const deleteExhibitionConstruct = new DeleteExhibitionConstruct(this, 'DeleteExhibitionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+            deleteAssetLambda: sharedLambdas.deleteAssetLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda,
+            deleteExhibitStateMachine: deleteExhibitConstruct.deleteExhibitStateMachine
+        });
+
+        this.deleteExhibitionLambda = deleteExhibitionConstruct.deleteExhibitionLambda
+
+        // Update Exhibition Construct
+        const updateExhibitionConstruct = new UpdateExhibitionConstruct(this, 'UpdateExhibitionConstruct', {
+            envName: props.envName,
+            storage: props.storage,
+            imageProcessorLambda: sharedLambdas.imageProcessorLambda,
+            audioProcessorLambda: sharedLambdas.audioProcessorLambda,
+            deleteAssetLambda: sharedLambdas.deleteAssetLambda,
+            cdnManagerLambda: sharedLambdas.cdnManagerLambda
+        });
+
+        this.updateExhibitionLambda = updateExhibitionConstruct.updateExhibitionLambda
 
         // Generate Audio Preview Construct
         const generateAudioPreviewConstruct = new AudioPreviewConstruct(this, 'AudioPreviewConstruct', {
