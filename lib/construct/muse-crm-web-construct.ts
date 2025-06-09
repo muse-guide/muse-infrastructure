@@ -225,6 +225,7 @@ export class MuseCrmWebConstruct extends Construct {
                     origin: new origins.S3Origin(props.storage.crmAssetBucket, {originAccessIdentity: props.storage.crmAssetBucketOai}),
                     viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                     cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+                    originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
                 }
             }
         });

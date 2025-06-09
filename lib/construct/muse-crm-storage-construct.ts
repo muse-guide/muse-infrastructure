@@ -72,6 +72,7 @@ export class MuseCrmStorageConstruct extends Construct {
                 ],
                 "allowedOrigins": ["*"], // TODO tighten permissions!!!!
                 "allowedHeaders": ["*"],
+                "exposedHeaders": ["ETag", "x-amz-request-id", "x-amz-id-2"],
             }]
         })
         this.crmAssetBucketOai = new cloudfront.OriginAccessIdentity(this, 'CrmOriginAccessIdentity');
