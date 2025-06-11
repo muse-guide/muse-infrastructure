@@ -20,7 +20,7 @@ export interface MuseAppWebConstructProps extends cdk.StackProps {
     readonly certificateArn: string
 }
 
-const API_KEY = "91f5ee14-07d0-46b3-8700-41ecdd4f6305"
+const API_KEY = "91f5ee14-07d0-46b3-8700-41ecdd4f6305" // TODO: replace for production
 
 export class MuseAppWebConstruct extends Construct {
 
